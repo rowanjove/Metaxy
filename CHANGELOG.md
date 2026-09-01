@@ -2,6 +2,18 @@
 
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.0.1] - 2026-09-01
+
+### 品牌更新
+
+- 中文名正式更名为“之间门”，英文名正式更名为“Metaxy”。
+- 更新网页标题、中英文界面、管理后台、默认站点设置、文档、截图、包名和 Worker 名称。
+- GitHub 仓库迁移至 `rowanjove/metaxy`。
+- 新增设置迁移，仅将仍为旧默认值 `PocketRelay` 的站点名改为“之间门”，不会覆盖用户自定义站点名。
+- 新客户端键、Cookie 和上传 Header 使用 `metaxy` 命名，并兼容、迁移旧版浏览器状态与 Header。
+
+[2.0.1]: https://github.com/rowanjove/metaxy/releases/tag/v2.0.1
+
 ## [2.0.0] - 2026-09-01
 
 ### 新增
@@ -30,4 +42,4 @@
   `object_deletions` 数据模型；旧版 `cards` 数据不会自动转换。
 - 确认 v2 部署及数据备份无误前，不要执行 `release/0003_remove_v1.sql`。
 
-[2.0.0]: https://github.com/rowanjove/pocket-relay/releases/tag/v2.0.0
+[2.0.0]: https://github.com/rowanjove/metaxy/releases/tag/v2.0.0

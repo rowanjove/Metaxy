@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "pocket-relay",
+  "name": "metaxy",
   "main": "src/worker/index.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -51,7 +51,7 @@
   ],
 
   "vars": {
-    "APP_NAME": "PocketRelay",
+    "APP_NAME": "之间门",
     "UPLOAD_MODE": "token",
     "MAX_FILE_BYTES_HARD": "52428800",
     "MAX_DROP_FILE_BYTES_HARD": "524288000",

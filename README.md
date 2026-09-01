@@ -1,19 +1,19 @@
-# PocketRelay v2
+# 之间门 · Metaxy
 
 [简体中文](README.md) | [English](README.en.md)
 
 私人跨设备内容中转站。复制一下，换台设备，输入提取码，拿走。
 
-PocketRelay v2 是基于 Cloudflare Workers 单 Worker 架构（API + Static Assets + Cron）构建的极简中转工具，使用 D1 保存元数据、Private R2 存储文件及大文本。
+之间门（英文名 Metaxy）是基于 Cloudflare Workers 单 Worker 架构（API + Static Assets + Cron）构建的极简中转工具，使用 D1 保存元数据、Private R2 存储文件及大文本。
 
-![PocketRelay 桌面端首页](docs/screenshots/home.png)
+![之间门桌面端首页](docs/screenshots/home.png)
 
 <details>
 <summary>查看更多界面截图</summary>
 
 | 移动端首页 | 提取内容 |
 |---|---|
-| ![PocketRelay 移动端首页](docs/screenshots/home-mobile.png) | ![PocketRelay 提取页](docs/screenshots/drop-detail.png) |
+| ![之间门移动端首页](docs/screenshots/home-mobile.png) | ![之间门提取页](docs/screenshots/drop-detail.png) |
 
 </details>
 
@@ -52,8 +52,8 @@ Hono Worker
 需要 Node.js 及 npm。
 
 ```bash
-git clone https://github.com/rowanjove/pocket-relay.git
-cd pocket-relay
+git clone https://github.com/rowanjove/metaxy.git
+cd metaxy
 npm ci
 cp .dev.vars.example .dev.vars
 ```
@@ -91,7 +91,7 @@ npx wrangler d1 create pocket-relay
 npx wrangler r2 bucket create pocket-relay-files
 ```
 
-将 D1 创建结果中的 `database_id` 写入 `wrangler.jsonc`，并确认 R2 Bucket 名称与配置一致。
+将 D1 创建结果中的 `database_id` 写入 `wrangler.jsonc`，并确认 R2 Bucket 名称与配置一致。现有 D1/R2 使用旧版资源名时可以继续保留，品牌改名不要求迁移存储资源。
 
 ### 2. 配置 R2 CORS
 
@@ -174,5 +174,5 @@ Content-Type: application/json
 ## 版本与许可
 
 - [更新日志](CHANGELOG.md)
-- [v2.0.0 发布公告](release/RELEASE_NOTES_v2.0.0.md)
+- [v2.0.1 发布公告](release/RELEASE_NOTES_v2.0.1.md)
 - [MIT License](LICENSE)

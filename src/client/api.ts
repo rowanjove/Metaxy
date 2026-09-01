@@ -34,8 +34,8 @@ async function requestJson<T>(
 
   // Add upload token if available
   const uploadToken = getSavedUploadToken();
-  if (uploadToken && !headers.has("X-PocketRelay-Upload-Token")) {
-    headers.set("X-PocketRelay-Upload-Token", uploadToken);
+  if (uploadToken && !headers.has("X-Metaxy-Upload-Token")) {
+    headers.set("X-Metaxy-Upload-Token", uploadToken);
   }
 
   // Add draft token if specified

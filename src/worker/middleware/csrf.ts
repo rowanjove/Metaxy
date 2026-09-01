@@ -3,7 +3,7 @@ import type { WorkerContext } from "../env";
 import { AppError } from "../errors";
 import { ERROR_CODES } from "../../shared/error-codes";
 import { getCookie } from "hono/cookie";
-import { COOKIE_NAME } from "../../shared/constants";
+import { COOKIE_NAME, LEGACY_COOKIE_NAME } from "../../shared/constants";
 
 export const adminCsrfMiddleware: MiddlewareHandler<WorkerContext> = async (c, next) => {
   const method = c.req.method.toUpperCase();
@@ -13,7 +13,7 @@ export const adminCsrfMiddleware: MiddlewareHandler<WorkerContext> = async (c, n
     // Bearer-authenticated API clients are not vulnerable to ambient-cookie
     // CSRF. Keep Origin/Referer enforcement for browser cookie sessions.
     const hasBearer = /^Bearer\s+\S+/i.test(c.req.header("authorization") || "");
-    if (hasBearer && !getCookie(c, COOKIE_NAME)) {
+    if (hasBearer && !getCookie(c, COOKIE_NAME) && !getCookie(c, LEGACY_COOKIE_NAME)) {
       await next();
       return;
     }

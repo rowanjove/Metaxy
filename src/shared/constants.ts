@@ -62,8 +62,14 @@ export const DANGEROUS_MIME_TYPES = new Set([
   "application/vnd.android.package-archive"
 ]);
 
-export const COOKIE_NAME = "pocketrelay_session";
+export const COOKIE_NAME = "metaxy_session";
+export const LEGACY_COOKIE_NAME = "pocketrelay_session";
 export const STORAGE_KEYS = {
+  LOCALE: "metaxy.locale.v2",
+  THEME: "metaxy.theme.v2",
+  UPLOAD_TOKEN: "metaxy.uploadToken.v2"
+} as const;
+export const LEGACY_STORAGE_KEYS = {
   LOCALE: "pocketrelay.locale.v2",
   THEME: "pocketrelay.theme.v2",
   UPLOAD_TOKEN: "pocketrelay.uploadToken.v2"

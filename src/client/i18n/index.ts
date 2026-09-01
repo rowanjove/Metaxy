@@ -1,4 +1,4 @@
-import { STORAGE_KEYS } from "../../shared/constants";
+import { LEGACY_STORAGE_KEYS, STORAGE_KEYS } from "../../shared/constants";
 import { zhCN, type TranslationDict } from "./zh-CN";
 import { en } from "./en";
 
@@ -18,8 +18,11 @@ if (typeof document !== "undefined") {
 
 function initLocale(): Locale {
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.LOCALE);
+    const saved = localStorage.getItem(STORAGE_KEYS.LOCALE) ||
+      localStorage.getItem(LEGACY_STORAGE_KEYS.LOCALE);
     if (saved === "zh-CN" || saved === "en") {
+      localStorage.setItem(STORAGE_KEYS.LOCALE, saved);
+      localStorage.removeItem(LEGACY_STORAGE_KEYS.LOCALE);
       return saved;
     }
   } catch {

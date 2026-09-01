@@ -1,6 +1,6 @@
 export const zhCN = {
   app: {
-    name: "PocketRelay",
+    name: "之间门",
     admin: "管理后台",
     language: "语言",
     theme: "主题",
@@ -80,7 +80,7 @@ export const zhCN = {
     viewsCount: "已访问 {count} 次"
   },
   admin: {
-    title: "PocketRelay 管理后台",
+    title: "之间门管理后台",
     loginTitle: "管理员登录",
     passwordLabel: "管理密码",
     passwordPlaceholder: "请输入 ADMIN_PASSWORD",

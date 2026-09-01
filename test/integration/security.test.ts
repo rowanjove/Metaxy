@@ -25,6 +25,20 @@ describe("Security and abuse prevention", () => {
     expect(json.error.code).toBe("UNAUTHORIZED");
   });
 
+  it("accepts the Metaxy upload header", async () => {
+    const req = new Request("http://localhost/api/v1/drops", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Metaxy-Upload-Token": "test-upload-token"
+      },
+      body: "{}"
+    });
+
+    const res = await app.fetch(req, env, {} as any);
+    expect(res.status).toBe(201);
+  });
+
   it("blocks dangerous script files in public upload mode", async () => {
     const publicEnv = createMockEnv({ UPLOAD_MODE: "public" });
     const draft = await createDraft(publicEnv);

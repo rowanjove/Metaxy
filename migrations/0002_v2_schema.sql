@@ -99,7 +99,7 @@ ON object_deletions(created_at);
 
 -- Default system settings
 INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES
-  ('site_name', 'PocketRelay', 1780000000000),
+  ('site_name', '之间门', 1780000000000),
   ('default_expiry_seconds', '86400', 1780000000000),
   ('max_expiry_seconds', '604800', 1780000000000),
   ('max_file_bytes', '52428800', 1780000000000),

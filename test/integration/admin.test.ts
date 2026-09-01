@@ -45,7 +45,7 @@ describe("Admin authentication and settings management", () => {
 
   it("reads and updates settings with hard limit clamping", async () => {
     const initial = await getParsedSettings(env.DB, env);
-    expect(initial.site_name).toBe("PocketRelay");
+    expect(initial.site_name).toBe("之间门");
     expect(initial.max_file_bytes).toBe(52428800);
 
     // Update settings in D1

@@ -54,7 +54,7 @@ export async function getParsedSettings(db: D1Database, env: Env): Promise<Parse
   const map = await getSettingsMap(db);
   const hard = getHardLimits(env);
 
-  const rawSiteName = map.get("site_name") || env.APP_NAME || "PocketRelay";
+  const rawSiteName = map.get("site_name") || env.APP_NAME || "之间门";
   const defaultExpiry = Number.parseInt(
     map.get("default_expiry_seconds") || String(DEFAULT_LIMITS.DEFAULT_EXPIRY_SECONDS),
     10

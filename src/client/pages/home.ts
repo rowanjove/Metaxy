@@ -15,7 +15,7 @@ export async function createHomePage(): Promise<HTMLElement> {
   } catch (err) {
     console.error("[HomePage] Failed to fetch meta", err);
     meta = {
-      siteName: "PocketRelay",
+      siteName: t("app.name"),
       uploadMode: "token",
       limits: {
         maxTextBytes: 5242880,
@@ -28,7 +28,7 @@ export async function createHomePage(): Promise<HTMLElement> {
       codeLength: 6
     };
   }
-  document.title = meta.siteName;
+  document.title = t("app.name");
 
   // Mobile Tab Switcher
   const mobileTabs = document.createElement("div");

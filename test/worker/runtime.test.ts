@@ -4,9 +4,10 @@ import { createDraftDrop } from "../../src/worker/repositories/drops";
 import { createPendingFile } from "../../src/worker/repositories/files";
 import v2Schema from "../../migrations/0002_v2_schema.sql?raw";
 import cleanupHardening from "../../migrations/0003_cleanup_hardening.sql?raw";
+import metaxyBrand from "../../migrations/0004_metaxy_brand.sql?raw";
 
 beforeAll(async () => {
-  for (const migration of [v2Schema, cleanupHardening]) {
+  for (const migration of [v2Schema, cleanupHardening, metaxyBrand]) {
     const statements = migration.split(";").map((sql) => sql.trim()).filter(Boolean);
     await env.DB.batch(statements.map((sql) => env.DB.prepare(sql)));
   }

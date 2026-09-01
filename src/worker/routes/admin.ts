@@ -3,7 +3,7 @@ import { setCookie, deleteCookie } from "hono/cookie";
 import type { WorkerContext } from "../env";
 import { AppError } from "../errors";
 import { ERROR_CODES } from "../../shared/error-codes";
-import { COOKIE_NAME, DEFAULT_LIMITS } from "../../shared/constants";
+import { COOKIE_NAME, DEFAULT_LIMITS, LEGACY_COOKIE_NAME } from "../../shared/constants";
 import { jsonSuccess } from "../lib/responses";
 import { checkRateLimit, getClientIp } from "../middleware/rate-limit";
 import { adminSessionMiddleware } from "../middleware/admin-session";
@@ -76,6 +76,7 @@ adminRoutes.post("/admin/logout", adminSessionMiddleware, adminCsrfMiddleware, a
   }
   await logoutAdminSession(c.env, session.id);
   deleteCookie(c, COOKIE_NAME, { path: "/" });
+  deleteCookie(c, LEGACY_COOKIE_NAME, { path: "/" });
   return jsonSuccess(c, { ok: true });
 });
 
@@ -83,6 +84,7 @@ adminRoutes.post("/admin/logout", adminSessionMiddleware, adminCsrfMiddleware, a
 adminRoutes.post("/admin/logout-all", adminSessionMiddleware, adminCsrfMiddleware, async (c) => {
   await logoutAllAdmin(c.env);
   deleteCookie(c, COOKIE_NAME, { path: "/" });
+  deleteCookie(c, LEGACY_COOKIE_NAME, { path: "/" });
   return jsonSuccess(c, { ok: true });
 });
 
@@ -323,7 +325,7 @@ adminRoutes.patch("/admin/settings", adminSessionMiddleware, adminCsrfMiddleware
   );
 
   if (body.site_name !== undefined) {
-    const clean = body.site_name.trim().slice(0, 100) || "PocketRelay";
+    const clean = body.site_name.trim().slice(0, 100) || "之间门";
     await setSettingValue(c.env.DB, "site_name", clean, now);
   }
 

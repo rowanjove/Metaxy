@@ -1,19 +1,19 @@
-# PocketRelay v2
+# Metaxy · 之间门
 
 [简体中文](README.md) | [English](README.en.md)
 
 A private cross-device content relay: copy something, switch devices, enter a retrieval code, and take it with you.
 
-PocketRelay v2 is a self-hosted Cloudflare Workers application. One Worker serves the API, static assets, and scheduled cleanup. D1 stores metadata, while private R2 storage holds files and large text.
+Metaxy (Chinese name: 之间门) is a self-hosted Cloudflare Workers application. One Worker serves the API, static assets, and scheduled cleanup. D1 stores metadata, while private R2 storage holds files and large text.
 
-![PocketRelay desktop home page](docs/screenshots/home.png)
+![Metaxy desktop home page](docs/screenshots/home.png)
 
 <details>
 <summary>More screenshots</summary>
 
 | Mobile home page | Retrieved content |
 |---|---|
-| ![PocketRelay mobile home page](docs/screenshots/home-mobile.png) | ![PocketRelay drop detail page](docs/screenshots/drop-detail.png) |
+| ![Metaxy mobile home page](docs/screenshots/home-mobile.png) | ![Metaxy drop detail page](docs/screenshots/drop-detail.png) |
 
 </details>
 
@@ -52,8 +52,8 @@ Hono Worker
 Node.js and npm are required.
 
 ```bash
-git clone https://github.com/rowanjove/pocket-relay.git
-cd pocket-relay
+git clone https://github.com/rowanjove/metaxy.git
+cd metaxy
 npm ci
 cp .dev.vars.example .dev.vars
 ```
@@ -91,7 +91,7 @@ npx wrangler d1 create pocket-relay
 npx wrangler r2 bucket create pocket-relay-files
 ```
 
-Copy the D1 `database_id` into `wrangler.jsonc` and confirm that the R2 bucket name matches your configuration.
+Copy the D1 `database_id` into `wrangler.jsonc` and confirm that the R2 bucket name matches your configuration. Existing installations may keep legacy D1 and R2 resource names; the product rename does not require a storage migration.
 
 ### 2. Configure R2 CORS
 
@@ -165,7 +165,7 @@ Content-Type: application/json
 
 ## Privacy and limitations
 
-- Text and files are stored server-side during their lifetime; PocketRelay is not end-to-end encrypted storage.
+- Text and files are stored server-side during their lifetime; Metaxy is not end-to-end encrypted storage.
 - Retrieval codes are intended for temporary sharing, not as strong access control or a sole backup.
 - A presigned URL is a Bearer credential until it expires. Clients must not log or forward it.
 - Deletion is asynchronous at the application layer and does not promise simultaneous physical erasure from every cloud backup.
@@ -174,5 +174,5 @@ Content-Type: application/json
 ## Version and license
 
 - [Changelog](CHANGELOG.md)
-- [v2.0.0 release notes](release/RELEASE_NOTES_v2.0.0.md)
+- [v2.0.1 release notes](release/RELEASE_NOTES_v2.0.1.md)
 - [MIT License](LICENSE)

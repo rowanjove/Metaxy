@@ -2,7 +2,7 @@ import type { TranslationDict } from "./zh-CN";
 
 export const en: TranslationDict = {
   app: {
-    name: "PocketRelay",
+    name: "Metaxy",
     admin: "Admin",
     language: "Language",
     theme: "Theme",
@@ -82,7 +82,7 @@ export const en: TranslationDict = {
     viewsCount: "Viewed {count} times"
   },
   admin: {
-    title: "PocketRelay Admin",
+    title: "Metaxy Admin",
     loginTitle: "Admin Login",
     passwordLabel: "Admin Password",
     passwordPlaceholder: "Enter ADMIN_PASSWORD",

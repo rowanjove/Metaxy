@@ -112,7 +112,7 @@ export function createMockD1(): D1Database {
   const objectDeletions = new Map<string, any>();
 
   // Default seed settings
-  settings.set("site_name", { key: "site_name", value: "PocketRelay", updated_at: Date.now() });
+  settings.set("site_name", { key: "site_name", value: "之间门", updated_at: Date.now() });
   settings.set("default_expiry_seconds", { key: "default_expiry_seconds", value: "86400", updated_at: Date.now() });
   settings.set("max_expiry_seconds", { key: "max_expiry_seconds", value: "604800", updated_at: Date.now() });
   settings.set("max_file_bytes", { key: "max_file_bytes", value: "52428800", updated_at: Date.now() });
@@ -620,7 +620,7 @@ export function createMockEnv(overrides: Partial<Env> = {}): Env {
     LOGIN_RATE_LIMITER: { limit: async () => ({ success: true }) } as unknown as RateLimit,
     UPLOAD_RATE_LIMITER: { limit: async () => ({ success: true }) } as unknown as RateLimit,
     RETRIEVE_RATE_LIMITER: { limit: async () => ({ success: true }) } as unknown as RateLimit,
-    APP_NAME: "PocketRelay",
+    APP_NAME: "之间门",
     UPLOAD_MODE: "token",
     ADMIN_PASSWORD: "test-admin-password",
     UPLOAD_TOKEN: "test-upload-token",

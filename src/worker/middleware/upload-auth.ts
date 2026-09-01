@@ -18,6 +18,7 @@ export const uploadAuthMiddleware: MiddlewareHandler<WorkerContext> = async (c, 
     }
 
     const providedToken =
+      c.req.header("x-metaxy-upload-token")?.trim() ||
       c.req.header("x-pocketrelay-upload-token")?.trim() ||
       c.req.header("authorization")?.replace(/^Bearer\s+/i, "").trim();
 
