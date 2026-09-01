@@ -1,18 +1,40 @@
 {
   "name": "pocket-relay",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "cf-typegen": "wrangler types",
+    "test": "vitest run",
+    "test:worker": "vitest run --config vitest.worker.config.ts",
+    "test:e2e": "playwright test",
+    "test:watch": "vitest",
+    "check": "npm run cf-typegen && npm run typecheck && npm run test && npm run test:worker && npm run build",
+    "check:deploy": "node scripts/validate-deploy.mjs",
+    "deploy:dry": "npm run check:deploy && npm run build && wrangler deploy --dry-run",
+    "deploy": "npm run check:deploy && npm run build && wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "db:migrate:remote": "wrangler d1 migrations apply DB --remote"
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "db:remove-v1:local": "wrangler d1 execute DB --local --file release/0003_remove_v1.sql",
+    "db:remove-v1:remote": "wrangler d1 execute DB --remote --file release/0003_remove_v1.sql"
+  },
+  "dependencies": {
+    "aws4fetch": "^1.0.20",
+    "hono": "^4.7.4",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260410.0",
+    "@cloudflare/vite-plugin": "^1.54.2",
+    "@cloudflare/vitest-plugin": "^1.1.2",
+    "@playwright/test": "^1.62.1",
+    "@types/qrcode": "^1.5.5",
     "typescript": "^5.8.3",
-    "wrangler": "^4.11.1"
+    "vite": "^6.2.0",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.127.1"
   }
 }

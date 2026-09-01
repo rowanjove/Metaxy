@@ -1,12 +1,28 @@
+# Node & Build
 node_modules/
+dist/
 .wrangler/
+*.log
+test-results/
+release/artifacts/
+*.cpuprofile
+
+# Environment & Secrets
 .dev.vars
 .dev.vars.*
-!.dev.vars.example
 .env
 .env.*
+!.env.example
+!.dev.vars.example
 key.md
-dist/
-coverage/
-*.log
-*.local
+key*.md
+credentials*.json
+secrets*.json
+*.bak
+*.7z
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

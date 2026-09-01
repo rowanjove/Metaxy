@@ -1,1 +1,10 @@
-SHORTCUT_TOKEN=replace-me-with-a-long-random-string
+# PocketRelay Local Development Variables
+# Copy to .dev.vars for local testing
+
+ADMIN_PASSWORD=test-admin-password
+UPLOAD_TOKEN=test-upload-token
+SHORTCUT_TOKEN=test-shortcut-token
+R2_ACCESS_KEY_ID=mock-r2-access-key-id
+R2_SECRET_ACCESS_KEY=mock-r2-secret-access-key
+R2_ACCOUNT_ID=mock-r2-account-id
+R2_BUCKET_NAME=pocket-relay-files
