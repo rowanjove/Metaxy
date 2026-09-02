@@ -174,5 +174,5 @@ Content-Type: application/json
 ## Version and license
 
 - [Changelog](CHANGELOG.md)
-- [v2.0.1 release notes](release/RELEASE_NOTES_v2.0.1.md)
+- [v2.0.2 release notes](release/RELEASE_NOTES_v2.0.2.md)
 - [MIT License](LICENSE)

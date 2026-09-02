@@ -174,5 +174,5 @@ Content-Type: application/json
 ## 版本与许可
 
 - [更新日志](CHANGELOG.md)
-- [v2.0.1 发布公告](release/RELEASE_NOTES_v2.0.1.md)
+- [v2.0.2 发布公告](release/RELEASE_NOTES_v2.0.2.md)
 - [MIT License](LICENSE)
