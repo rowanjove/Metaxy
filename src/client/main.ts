@@ -35,7 +35,7 @@ function renderApp() {
 
   const logoImg = document.createElement("img");
   logoImg.src = "/favicon.svg";
-  logoImg.alt = "Logo";
+  logoImg.alt = "";
   logoImg.className = "brand-logo";
 
   const brandText = document.createElement("span");

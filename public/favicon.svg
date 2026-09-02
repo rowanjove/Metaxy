@@ -1,11 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">之间门 · Metaxy</title>
+  <desc id="desc">两扇相向的门在中央形成一条明亮通道</desc>
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#4488ee"/>
-      <stop offset="100%" stop-color="#55b3ff"/>
+    <linearGradient id="background" x1="10" y1="8" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D4ED8"/>
+      <stop offset="0.52" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#4338CA"/>
+    </linearGradient>
+    <linearGradient id="passage" x1="32" y1="18" x2="32" y2="49" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#BFDBFE"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="16" fill="url(#g)"/>
-  <rect x="17" y="28" width="30" height="8" rx="4" fill="#07080a"/>
-  <rect x="28" y="17" width="8" height="30" rx="4" fill="#07080a"/>
+  <rect width="64" height="64" rx="15" fill="url(#background)"/>
+  <path d="M14 14h17v7H21v29h-7V14Z" fill="#EFF6FF"/>
+  <path d="M50 14H33v7h10v29h7V14Z" fill="#EFF6FF"/>
+  <path d="m32 22 7 7v21H25V29l7-7Z" fill="url(#passage)"/>
+  <path d="M32 29v15" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/>
 </svg>
