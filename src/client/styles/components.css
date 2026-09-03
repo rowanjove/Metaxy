@@ -75,9 +75,22 @@
 .composer-textarea {
   width: 100%;
   min-height: 160px;
+  padding-right: 82px;
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.6;
+}
+
+.composer-text-field {
+  position: relative;
+}
+
+.composer-paste-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
 }
 
 /* Dropzone & File Input */

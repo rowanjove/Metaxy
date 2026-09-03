@@ -26,7 +26,7 @@
 - **随机提取码**：默认六位，可配置为 5–8 位；支持分享链接与二维码。
 - **实时过期判断**：过期内容立即返回 410，不依赖定时任务是否已执行。
 - **双模式权限**：支持公开上传或上传口令；公开模式默认阻断危险脚本与可执行文件。
-- **iOS 快捷指令接口**：使用 Bearer Token 一键推送文本。
+- **iOS 快捷指令接口**：使用 Bearer Token 一键推送文本、图片或任意文件。
 - **管理后台**：支持 Session 登录、总览统计、延期、失效、删除和系统设置。
 - **自动清理**：每分钟分批处理未提交草稿、过期内容、失效记录和孤儿对象。
 - **原生前端**：Vite + TypeScript + CSS，支持中英文、亮暗主题和移动端布局。
@@ -95,7 +95,7 @@ npx wrangler r2 bucket create pocket-relay-files
 
 ### 2. 配置 R2 CORS
 
-把 `cors.json` 中的 `https://drop.example.com` 替换为生产站点的完整 Origin，然后执行：
+生产站点使用 `https://drop.rowanjove.top`。如部署到其他域名，请先把 `cors.json` 中的 Origin 替换为新站点的完整 Origin，然后执行：
 
 ```bash
 npx wrangler r2 bucket cors set pocket-relay-files --file cors.json
@@ -144,6 +144,23 @@ Content-Type: application/json
 
 也支持 `text/plain` 请求体。令牌只能放在 Authorization Header 中，不支持 URL 查询参数。
 
+发送图片或文件时，把文件本身作为原始请求体，并添加以下 Header：
+
+```http
+POST /api/shortcut/push
+Authorization: Bearer YOUR_SHORTCUT_TOKEN
+Content-Type: image/jpeg
+X-Metaxy-Filename: photo.jpg
+X-Metaxy-File-Size: 245760
+X-Metaxy-Expires-In-Seconds: 86400
+
+<文件二进制>
+```
+
+`X-Metaxy-Filename` 使用 URL 编码，以兼容中文文件名；文件大小可以来自快捷指令的“获取文件详细信息”动作。若客户端自动发送准确的 `Content-Length`，可以省略 `X-Metaxy-File-Size`。每次请求上传一个文件；多选内容可以使用“对每一项重复”逐个提交。响应仍是 `code`、`url` 和 `expiresAt`。
+
+网页发送区的文本框右上角提供“粘贴”按钮。浏览器会在点击后请求剪贴板读取权限；系统粘贴操作仍可同时粘贴文本或剪贴板图片。
+
 ## API 概览
 
 | 方法 | 路径 | 说明 | 权限要求 |
@@ -174,5 +191,5 @@ Content-Type: application/json
 ## 版本与许可
 
 - [更新日志](CHANGELOG.md)
-- [v2.0.2 发布公告](release/RELEASE_NOTES_v2.0.2.md)
+- [v2.1.0 发布公告](release/RELEASE_NOTES_v2.1.0.md)
 - [MIT License](LICENSE)

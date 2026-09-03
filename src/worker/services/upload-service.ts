@@ -31,10 +31,26 @@ export interface PrepareUploadParams {
   sortOrder?: number;
 }
 
-export async function prepareUpload(
+export interface BindingUploadResult {
+  fileId: string;
+  uploadObjectKey: string;
+}
+
+export function prepareUpload(
   env: Env,
   params: PrepareUploadParams
-): Promise<PresignedUrlResult & { fileId: string }> {
+): Promise<PresignedUrlResult & { fileId: string }>;
+export function prepareUpload(
+  env: Env,
+  params: PrepareUploadParams,
+  options: { transport: "binding" }
+): Promise<BindingUploadResult>;
+export async function prepareUpload(
+  env: Env,
+  params: PrepareUploadParams,
+  options: { transport?: "presigned" | "binding" } = {}
+): Promise<(PresignedUrlResult & { fileId: string }) | BindingUploadResult> {
+  const transport = options.transport ?? "presigned";
   const drop = await getDropById(env.DB, params.dropId);
   if (!drop || drop.status !== "draft") {
     throw new AppError(404, ERROR_CODES.NOT_FOUND, "Draft not found or already closed.");
@@ -96,6 +112,9 @@ export async function prepareUpload(
   // A retry refreshes the URL for the existing pending record. Creating a new
   // record would leave the old one pending forever and make commit impossible.
   if (params.fileId) {
+    if (transport === "binding") {
+      throw new AppError(400, ERROR_CODES.BAD_REQUEST, "Binding uploads cannot refresh a presigned URL.");
+    }
     const existing = await getFileById(env.DB, params.fileId);
     if (
       !existing ||
@@ -167,12 +186,10 @@ export async function prepareUpload(
   const objectKey = `drops/${params.dropId}/files/${fileId}`;
   const uploadObjectKey = `uploads/${params.dropId}/${fileId}`;
   let sortOrder = params.sortOrder ?? existingFiles.length + 1;
-  const presigned = await createPresignedPutUrl(
-    env,
-    uploadObjectKey,
-    cleanContentType,
-    ttlSeconds
-  );
+  const presigned = transport === "presigned"
+    ? await createPresignedPutUrl(env, uploadObjectKey, cleanContentType, ttlSeconds)
+    : null;
+  const uploadAuthorizationExpiresAt = presigned?.expiresAt ?? now;
 
   let created = false;
   for (let attempt = 0; attempt <= settings.max_files_per_drop; attempt++) {
@@ -188,7 +205,7 @@ export async function prepareUpload(
         expectedSize: params.size,
         sortOrder,
         createdAt: now,
-        presignExpiresAt: presigned.expiresAt
+        presignExpiresAt: uploadAuthorizationExpiresAt
       }, settings.max_drop_file_bytes);
       if (!inserted) {
         const latestDrop = await getDropById(env.DB, params.dropId);
@@ -218,10 +235,11 @@ export async function prepareUpload(
     throw new AppError(409, ERROR_CODES.CONFLICT, "Could not allocate a unique file order.");
   }
 
-  return {
-    fileId,
-    ...presigned
-  };
+  if (transport === "binding") {
+    return { fileId, uploadObjectKey };
+  }
+
+  return { fileId, ...presigned! };
 }
 
 export interface CompleteUploadParams {

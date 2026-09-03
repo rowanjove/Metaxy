@@ -17,6 +17,8 @@ export const zhCN = {
     retrieveTitle: "提取内容",
     retrieveIntro: "输入 {length} 位提取码获取文件或文本。",
     textPlaceholder: "粘贴一段文本、代码或链接...",
+    pasteButton: "粘贴",
+    pasteFailed: "无法读取剪贴板，请允许剪贴板权限或使用系统粘贴操作。",
     dropFilesHint: "拖入文件，或点击选择文件",
     addFilesButton: "添加文件",
     uploadTokenLabel: "上传口令",

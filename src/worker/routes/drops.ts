@@ -20,9 +20,11 @@ import { ERROR_CODES } from "../../shared/error-codes";
 export const dropsRoutes = new Hono<WorkerContext>();
 
 // Create Draft
-dropsRoutes.post("/drops", uploadAuthMiddleware, async (c) => {
+dropsRoutes.post("/drops", async (c, next) => {
   const ip = getClientIp(c);
-  await checkRateLimit(c.env.UPLOAD_RATE_LIMITER, `upload_${ip}`);
+  await checkRateLimit(c.env.UPLOAD_RATE_LIMITER, `upload_auth_${ip}`);
+  await next();
+}, uploadAuthMiddleware, async (c) => {
 
   const rawBody = await parseOptionalJsonBody<unknown>(c.req.raw);
   if (rawBody !== undefined && !isRecord(rawBody)) {

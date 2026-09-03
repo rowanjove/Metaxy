@@ -19,6 +19,8 @@ export const en: TranslationDict = {
     retrieveTitle: "Retrieve Content",
     retrieveIntro: "Enter a {length}-character code to retrieve files or text.",
     textPlaceholder: "Paste text, code snippets, or links...",
+    pasteButton: "Paste",
+    pasteFailed: "Could not read the clipboard. Allow clipboard access or use the system paste command.",
     dropFilesHint: "Drop files here, or click to browse",
     addFilesButton: "Add Files",
     uploadTokenLabel: "Upload Token",

@@ -99,14 +99,9 @@ export async function runScheduledCleanup(env: Env): Promise<CleanupResult> {
     };
   } catch (err) {
     console.error(JSON.stringify({ event: "cleanup_failed", error: String(err) }));
-    return {
-      processedDrops,
-      succeededDrops,
-      failedDrops,
-      processedOrphanObjects: 0,
-      cleanedSessions: 0,
-      durationMs: Date.now() - startTime
-    };
+    // Let the scheduled event fail so Workers observability and external
+    // monitoring can distinguish a global cleanup outage from an empty run.
+    throw err;
   }
 }
 

@@ -3,7 +3,7 @@
     {
       "allowed": {
         "origins": [
-          "https://drop.example.com",
+          "https://drop.rowanjove.top",
           "http://localhost:5173"
         ],
         "methods": ["PUT"],

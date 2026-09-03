@@ -71,4 +71,22 @@ describe("Scheduled Cron cleanup service", () => {
     expect(await env.DB.prepare("SELECT * FROM drops WHERE id = ?").bind(draft.dropId).first())
       .not.toBeNull();
   });
+
+  it("rejects the scheduled run when cleanup has a global failure", async () => {
+    const failedDb = new Proxy(env.DB, {
+      get(target, property, receiver) {
+        if (property === "prepare") {
+          return () => {
+            throw new Error("database unavailable");
+          };
+        }
+        return Reflect.get(target, property, receiver);
+      }
+    });
+    const failedEnv = createMockEnv({
+      DB: failedDb
+    });
+
+    await expect(runScheduledCleanup(failedEnv)).rejects.toThrow("database unavailable");
+  });
 });

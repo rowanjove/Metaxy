@@ -115,18 +115,24 @@ export async function incrementDropViewCount(
 export async function extendDropExpiry(
   db: D1Database,
   id: string,
-  newExpiresAt: number
-): Promise<void> {
-  await db
+  newExpiresAt: number,
+  expectedExpiresAt: number,
+  now: number
+): Promise<boolean> {
+  const result = await db
     .prepare(
       `
       UPDATE drops
       SET expires_at = ?
       WHERE id = ?
+        AND status = 'active'
+        AND expires_at = ?
+        AND expires_at > ?
       `
     )
-    .bind(newExpiresAt, id)
+    .bind(newExpiresAt, id, expectedExpiresAt, now)
     .run();
+  return (result.meta?.changes || 0) > 0;
 }
 
 export async function revokeDrop(

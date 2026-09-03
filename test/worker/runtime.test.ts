@@ -56,4 +56,39 @@ describe("Worker runtime smoke tests", () => {
     expect(row.upload_object_key).toBe(`uploads/${dropId}/${fileId}`);
     expect(row.finalize_token).toBeNull();
   });
+
+  it("streams a shortcut file through the real Worker R2 binding", async () => {
+    const bytes = new Uint8Array([137, 80, 78, 71]);
+    const response = await exports.default.fetch(new Request(
+      "https://example.com/api/shortcut/push",
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${env.SHORTCUT_TOKEN}`,
+          "content-type": "image/png",
+          "x-metaxy-filename": "runtime.png",
+          "x-metaxy-file-size": String(bytes.byteLength)
+        },
+        body: bytes
+      }
+    ));
+
+    const responseBody = await response.clone().text();
+    expect(response.status, responseBody).toBe(201);
+    const result = await response.json<{ code: string }>();
+    const detail = await exports.default.fetch(`https://example.com/api/v1/drops/${result.code}`);
+    expect(detail.status).toBe(200);
+    await expect(detail.json()).resolves.toMatchObject({
+      data: {
+        items: [{
+          type: "file",
+          file: {
+            filename: "runtime.png",
+            contentType: "image/png",
+            size: bytes.byteLength
+          }
+        }]
+      }
+    });
+  });
 });

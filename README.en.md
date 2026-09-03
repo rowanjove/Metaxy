@@ -26,7 +26,7 @@ Metaxy (Chinese name: 之间门) is a self-hosted Cloudflare Workers application
 - **Retrieval codes:** six characters by default, configurable from five to eight, with share links and QR codes.
 - **Real-time expiry:** expired content returns HTTP 410 immediately, without waiting for scheduled cleanup.
 - **Two upload modes:** public upload or token-gated upload; risky scripts and executables are blocked by default in public mode.
-- **iOS Shortcuts endpoint:** push text using a Bearer token.
+- **iOS Shortcuts endpoint:** push text, images, or arbitrary files using a Bearer token.
 - **Admin console:** session login, overview metrics, expiry extension, revocation, deletion, and settings.
 - **Automatic cleanup:** bounded scheduled cleanup for abandoned drafts, expired drops, revoked records, and orphaned objects.
 - **Native front end:** Vite, TypeScript, and CSS with Chinese and English locales, themes, and responsive layouts.
@@ -95,7 +95,7 @@ Copy the D1 `database_id` into `wrangler.jsonc` and confirm that the R2 bucket n
 
 ### 2. Configure R2 CORS
 
-Replace `https://drop.example.com` in `cors.json` with the exact production origin, then run:
+Production uses `https://drop.rowanjove.top`. If you deploy to another domain, replace the origin in `cors.json` with that exact production origin, then run:
 
 ```bash
 npx wrangler r2 bucket cors set pocket-relay-files --file cors.json
@@ -144,6 +144,23 @@ Content-Type: application/json
 
 `text/plain` bodies are also supported. The token must be sent in the Authorization header; query-string tokens are not accepted.
 
+For an image or file, send the file itself as the raw request body and add these headers:
+
+```http
+POST /api/shortcut/push
+Authorization: Bearer YOUR_SHORTCUT_TOKEN
+Content-Type: image/jpeg
+X-Metaxy-Filename: photo.jpg
+X-Metaxy-File-Size: 245760
+X-Metaxy-Expires-In-Seconds: 86400
+
+<file bytes>
+```
+
+URL-encode `X-Metaxy-Filename` when a filename contains non-ASCII characters. The file size can come from Shortcuts' “Get Details of Files” action. `X-Metaxy-File-Size` may be omitted when the client sends an accurate `Content-Length`. One request uploads one file; use “Repeat with Each” for multiple selected items. The response remains `code`, `url`, and `expiresAt`.
+
+The web composer now has a Paste button in the text field. The browser asks for clipboard-read permission when it is used; normal system paste still accepts text or clipboard images.
+
 ## API overview
 
 | Method | Path | Purpose | Access |
@@ -174,5 +191,5 @@ Content-Type: application/json
 ## Version and license
 
 - [Changelog](CHANGELOG.md)
-- [v2.0.2 release notes](release/RELEASE_NOTES_v2.0.2.md)
+- [v2.1.0 release notes](release/RELEASE_NOTES_v2.1.0.md)
 - [MIT License](LICENSE)

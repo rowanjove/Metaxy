@@ -221,15 +221,33 @@ adminRoutes.patch("/admin/drops/:id", adminSessionMiddleware, adminCsrfMiddlewar
   if (body.action === "extend") {
     const settings = await getParsedSettings(c.env.DB, c.env);
     const additional = body.additionalSeconds ?? 86400;
-    if (!Number.isFinite(additional) || additional <= 0) {
-      throw new AppError(400, ERROR_CODES.BAD_REQUEST, "Extension must be a positive number of seconds.");
+    if (!Number.isSafeInteger(additional) || additional <= 0) {
+      throw new AppError(400, ERROR_CODES.BAD_REQUEST, "Extension must be a positive whole number of seconds.");
     }
     const now = Date.now();
-    const currentExpiry = Math.max(now, drop.expires_at);
+    if (drop.status !== "active" || drop.expires_at <= now) {
+      throw new AppError(409, ERROR_CODES.CONFLICT, "Only an active, unexpired drop can be extended.");
+    }
     const maxExpiryTimestamp = drop.created_at + settings.max_expiry_seconds * 1000;
-    const newExpiresAt = Math.min(currentExpiry + additional * 1000, maxExpiryTimestamp);
+    const newExpiresAt = Math.min(drop.expires_at + additional * 1000, maxExpiryTimestamp);
+    if (newExpiresAt <= drop.expires_at) {
+      throw new AppError(
+        409,
+        ERROR_CODES.CONFLICT,
+        "This drop is already at or beyond the current maximum expiry."
+      );
+    }
 
-    await extendDropExpiry(c.env.DB, id, newExpiresAt);
+    const extended = await extendDropExpiry(
+      c.env.DB,
+      id,
+      newExpiresAt,
+      drop.expires_at,
+      now
+    );
+    if (!extended) {
+      throw new AppError(409, ERROR_CODES.CONFLICT, "Drop state changed while extending its expiry.");
+    }
     return jsonSuccess(c, { ok: true, expiresAt: newExpiresAt });
   }
 

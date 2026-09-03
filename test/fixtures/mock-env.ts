@@ -243,10 +243,18 @@ export function createMockD1(): D1Database {
     }
 
     if (s.startsWith("UPDATE drops SET expires_at = ? WHERE id = ?")) {
-      const [expires_at, id] = params;
+      const [expires_at, id, expectedExpiresAt, now] = params;
       const drop = drops.get(id);
-      if (drop) drop.expires_at = expires_at;
-      return { meta: { changes: 1 } };
+      const canExtend = Boolean(
+        drop &&
+        (expectedExpiresAt === undefined || (
+          drop.status === "active" &&
+          drop.expires_at === expectedExpiresAt &&
+          drop.expires_at > now
+        ))
+      );
+      if (canExtend) drop.expires_at = expires_at;
+      return { meta: { changes: canExtend ? 1 : 0 } };
     }
 
     if (s.startsWith("UPDATE drops SET status = 'revoked'")) {

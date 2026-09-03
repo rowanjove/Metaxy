@@ -3,7 +3,7 @@ import { api, ApiClientError } from "../api";
 import { getSavedUploadToken, saveUploadToken } from "../state";
 import type { CommitDropData, MetaData } from "../../shared/contracts";
 
-interface PendingFile {
+export interface PendingFile {
   id: string;
   file: File;
   sortOrder: number;
@@ -38,11 +38,23 @@ export function createComposer(
   const form = document.createElement("form");
   form.className = "composer-form";
 
-  // Textarea
+  // Textarea and explicit clipboard action
+  const textField = document.createElement("div");
+  textField.className = "composer-text-field";
+
   const textarea = document.createElement("textarea");
   textarea.className = "composer-textarea";
   textarea.placeholder = t("home.textPlaceholder");
   textarea.setAttribute("aria-label", t("home.textPlaceholder"));
+
+  const pasteButton = document.createElement("button");
+  pasteButton.type = "button";
+  pasteButton.className = "btn btn-ghost btn-sm composer-paste-button";
+  pasteButton.textContent = t("home.pasteButton");
+  pasteButton.setAttribute("aria-label", t("home.pasteButton"));
+
+  textField.appendChild(textarea);
+  textField.appendChild(pasteButton);
 
   // Drag and drop / file list
   const pendingFiles: PendingFile[] = [];
@@ -300,7 +312,26 @@ export function createComposer(
   errorBanner.className = "notice-box is-error";
   errorBanner.style.display = "none";
 
-  form.appendChild(textarea);
+  pasteButton.addEventListener("click", async () => {
+    try {
+      if (!navigator.clipboard?.readText) {
+        throw new Error("Clipboard API unavailable");
+      }
+      const clipboardText = await navigator.clipboard.readText();
+      errorBanner.style.display = "none";
+      const start = textarea.selectionStart ?? textarea.value.length;
+      const end = textarea.selectionEnd ?? start;
+      textarea.setRangeText(clipboardText, start, end, "end");
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.focus();
+    } catch {
+      errorBanner.textContent = t("home.pasteFailed");
+      errorBanner.style.display = "flex";
+      textarea.focus();
+    }
+  });
+
+  form.appendChild(textField);
   form.appendChild(dropzone);
   form.appendChild(filesContainer);
   form.appendChild(controlsRow);
@@ -375,6 +406,7 @@ export function createComposer(
     submitBtn.disabled = busy || waitingForFileRetry;
     submitBtn.textContent = busy ? t("home.creatingButton") : t("home.createButton");
     textarea.disabled = busy;
+    pasteButton.disabled = busy;
     expirySelect.disabled = busy;
     fileInput.disabled = busy;
     dropzone.style.pointerEvents = busy ? "none" : "";
@@ -404,14 +436,27 @@ export function createComposer(
   }
 }
 
-async function uploadFilesInQueue(
+type UploadQueueApi = Pick<
+  typeof api,
+  "prepareUpload" | "uploadFileToR2" | "completeUpload"
+>;
+
+const RECOVERABLE_COMPLETION_CODES = new Set([
+  "FILE_OBJECT_MISSING",
+  "FILE_SIZE_MISMATCH",
+  "FILE_TYPE_MISMATCH"
+]);
+
+export async function uploadFilesInQueue(
   dropId: string,
   draftToken: string,
   files: PendingFile[],
-  onUpdate: () => void
+  onUpdate: () => void,
+  client: UploadQueueApi = api
 ): Promise<void> {
   const concurrency = 3;
   let index = 0;
+  const failures: unknown[] = [];
 
   async function worker() {
     while (index < files.length) {
@@ -419,10 +464,31 @@ async function uploadFilesInQueue(
       if (!current) break;
 
       try {
+        // A prior PUT or completion response may have succeeded even when the
+        // browser observed a network failure. Verify first before re-uploading.
+        if (current.preparedFileId) {
+          current.status = "verifying";
+          onUpdate();
+          try {
+            await client.completeUpload(dropId, draftToken, current.preparedFileId);
+            current.status = "complete";
+            current.progress = 100;
+            onUpdate();
+            continue;
+          } catch (error) {
+            if (
+              !(error instanceof ApiClientError) ||
+              !RECOVERABLE_COMPLETION_CODES.has(error.code)
+            ) {
+              throw error;
+            }
+          }
+        }
+
         current.status = "preparing";
         onUpdate();
 
-        const prepared = await api.prepareUpload(dropId, draftToken, {
+        const prepared = await client.prepareUpload(dropId, draftToken, {
           fileId: current.preparedFileId,
           filename: current.file.name,
           size: current.file.size,
@@ -435,7 +501,7 @@ async function uploadFilesInQueue(
         current.progress = 0;
         onUpdate();
 
-        await api.uploadFileToR2(
+        await client.uploadFileToR2(
           prepared.uploadUrl,
           current.file,
           current.file.type || "application/octet-stream",
@@ -448,23 +514,22 @@ async function uploadFilesInQueue(
         current.status = "verifying";
         onUpdate();
 
-        await api.completeUpload(dropId, draftToken, prepared.fileId);
+        await client.completeUpload(dropId, draftToken, prepared.fileId);
         current.status = "complete";
         current.progress = 100;
         onUpdate();
-      } catch (err: any) {
+      } catch (err: unknown) {
         current.status = "error";
-        current.errorMessage = err.message;
+        current.errorMessage = err instanceof Error ? err.message : t("errors.UNKNOWN_ERROR");
         onUpdate();
-        throw err;
+        failures.push(err);
       }
     }
   }
 
   const workers = Array.from({ length: Math.min(concurrency, files.length) }, () => worker());
-  const results = await Promise.allSettled(workers);
-  const failed = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
-  if (failed) {
-    throw failed.reason;
+  await Promise.all(workers);
+  if (failures.length > 0) {
+    throw failures[0];
   }
 }

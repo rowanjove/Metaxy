@@ -25,6 +25,29 @@ describe("Security and abuse prevention", () => {
     expect(json.error.code).toBe("UNAUTHORIZED");
   });
 
+  it("rate-limits invalid upload tokens before authentication", async () => {
+    const keys: string[] = [];
+    const limitedEnv = createMockEnv({
+      UPLOAD_RATE_LIMITER: {
+        limit: async ({ key }: { key: string }) => {
+          keys.push(key);
+          return { success: false };
+        }
+      } as RateLimit
+    });
+    const response = await app.fetch(new Request("http://localhost/api/v1/drops", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Metaxy-Upload-Token": "wrong-token"
+      },
+      body: "{}"
+    }), limitedEnv, {} as ExecutionContext);
+
+    expect(response.status).toBe(429);
+    expect(keys).toEqual(["upload_auth_local"]);
+  });
+
   it("accepts the Metaxy upload header", async () => {
     const req = new Request("http://localhost/api/v1/drops", {
       method: "POST",
