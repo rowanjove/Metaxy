@@ -13,7 +13,7 @@ export const securityHeadersMiddleware: MiddlewareHandler<WorkerContext> = async
   headers.set("X-Request-Id", requestId);
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("X-Frame-Options", "DENY");
-  headers.set("Referrer-Policy", "no-referrer");
+  headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 
   const r2Origin = c.env.R2_ACCOUNT_ID?.trim()

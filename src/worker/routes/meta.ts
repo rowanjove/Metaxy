@@ -20,16 +20,29 @@ metaRoutes.get("/health", async (c) => {
 
 metaRoutes.get("/ready", async (c) => {
   const missing: string[] = [];
+  const driveRequested = c.env.DRIVE_ENABLED === "true";
   try {
     const schema = await c.env.DB.prepare(
       `
       SELECT COUNT(*) AS count
       FROM sqlite_master
       WHERE type = 'table'
-        AND name IN ('drops', 'files', 'drop_items', 'settings', 'admin_sessions', 'object_deletions')
+        AND name IN ('drops', 'files', 'drop_items', 'settings', 'admin_sessions', 'object_deletions', 'gallery_images', 'gallery_object_deletions')
       `
     ).first<{ count: number }>();
-    if ((schema?.count || 0) !== 6) missing.push("database_schema");
+    if ((schema?.count || 0) !== 8) missing.push("database_schema");
+    if (driveRequested) {
+      const driveSchema = await c.env.DB.prepare(
+        `SELECT COUNT(*) AS count FROM sqlite_master
+         WHERE type = 'table' AND name IN ('drive_nodes', 'drive_uploads', 'drive_object_deletions', 'drive_devices', 'dav_locks')`
+      ).first<{ count: number }>();
+      if ((driveSchema?.count || 0) !== 5) missing.push("drive_database_schema");
+      const driveRoots = await c.env.DB.prepare(
+        `SELECT COUNT(*) AS count FROM drive_nodes
+         WHERE status = 'active' AND system_role IN ('root', 'inbox')`
+      ).first<{ count: number }>();
+      if ((driveRoots?.count || 0) !== 2) missing.push("drive_root_nodes");
+    }
   } catch (error) {
     missing.push("database");
     console.error(JSON.stringify({ event: "readiness_database_failed", error: String(error) }));
@@ -48,10 +61,16 @@ metaRoutes.get("/ready", async (c) => {
   ) {
     missing.push("r2_presign_configuration");
   }
-  if (!c.env.LOGIN_RATE_LIMITER || !c.env.UPLOAD_RATE_LIMITER || !c.env.RETRIEVE_RATE_LIMITER) {
+  if (driveRequested &&
+      (!c.env.DRIVE_BUCKET_NAME?.trim() || !c.env.R2_ACCESS_KEY_ID?.trim() ||
+       !c.env.R2_SECRET_ACCESS_KEY?.trim() || !c.env.R2_ACCOUNT_ID?.trim())) {
+    missing.push("drive_presign_configuration");
+  }
+  if (!c.env.LOGIN_RATE_LIMITER || !c.env.UPLOAD_RATE_LIMITER || !c.env.RETRIEVE_RATE_LIMITER ||
+      (driveRequested && (!c.env.DRIVE_RATE_LIMITER || !c.env.DAV_RATE_LIMITER))) {
     missing.push("rate_limit_bindings");
   }
-  if (!c.env.FILES || !c.env.ASSETS) missing.push("storage_bindings");
+  if (!c.env.FILES || !c.env.GALLERY || !c.env.ASSETS || (driveRequested && !c.env.DRIVE)) missing.push("storage_bindings");
 
   if (missing.length > 0) {
     console.error(JSON.stringify({ event: "readiness_failed", missing }));

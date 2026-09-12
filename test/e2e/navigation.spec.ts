@@ -14,3 +14,18 @@ test("composer paste button inserts clipboard text", async ({ page, context }) =
   await page.getByRole("button", { name: /粘贴|Paste/ }).click();
   await expect(page.locator("textarea")).toHaveValue("clipboard text");
 });
+
+test("Drive stays behind the admin session boundary", async ({ page }) => {
+  await page.goto("/drive");
+  await expect(page.getByText(/管理权限验证失败|authentication failed|authentication required/)).toBeVisible();
+});
+
+test("public navigation keeps the admin entry hidden and exposes an icon theme toggle", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator('a[href="/admin"], a[href="/admin/login"]')).toHaveCount(0);
+
+  const themeToggle = page.locator("button.theme-toggle");
+  await expect(themeToggle).toHaveCount(1);
+  await expect(themeToggle).toHaveAttribute("aria-label", /亮色|暗色|Light|Dark/);
+  await expect(themeToggle).not.toContainText(/亮色|暗色|Light|Dark/);
+});

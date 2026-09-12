@@ -1,4 +1,5 @@
 export type RouteHandler = (params: Record<string, string>) => HTMLElement | Promise<HTMLElement>;
+type DisposableElement = HTMLElement & { dispose?: () => void };
 
 interface RouteDef {
   pattern: RegExp;
@@ -55,10 +56,12 @@ export class Router {
           }
           const element = await route.handler(params);
           if (version !== this.navigationVersion || !this.outlet) return;
+          (this.outlet.firstElementChild as DisposableElement | null)?.dispose?.();
           this.outlet.replaceChildren(element);
         } catch (err) {
           console.error("[Router] Error rendering route", err);
           if (version !== this.navigationVersion || !this.outlet) return;
+          (this.outlet.firstElementChild as DisposableElement | null)?.dispose?.();
           const error = document.createElement("div");
           error.className = "notice-box is-error";
           error.textContent = "Unable to load this page. Please try again.";
@@ -70,6 +73,7 @@ export class Router {
 
     // Default: Fallback to home
     if (pathname !== "/") {
+      (this.outlet.firstElementChild as DisposableElement | null)?.dispose?.();
       this.navigate("/");
     }
   }

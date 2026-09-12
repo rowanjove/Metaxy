@@ -31,6 +31,18 @@ Metaxy (Chinese name: 之间门) is a self-hosted Cloudflare Workers application
 - **Automatic cleanup:** bounded scheduled cleanup for abandoned drafts, expired drops, revoked records, and orphaned objects.
 - **Native front end:** Vite, TypeScript, and CSS with Chinese and English locales, themes, and responsive layouts.
 
+## Drive and WebDAV (3.0)
+
+Drive uses a separate private R2 bucket and D1 directory model. Browser uploads still use presigned PUT URLs, while WebDAV is exposed at `/dav/` with independent per-device credentials. Drive deletion goes to a recoverable trash state; existing Drops, retrieval codes, and Shortcut contracts remain unchanged.
+
+Before enabling production Drive, create the `pocket-relay-drive` bucket, configure least-privilege R2 S3 credentials, and apply [drive-cors.json](drive-cors.json) to that bucket. Then run `npm run db:migrate:remote`, `npm run check`, and `npm run deploy:dry`. WebDAV keeps the initial 50 MiB per-file limit; use browser R2 direct upload for larger files.
+
+For a native Windows compatibility smoke test, run the following from an elevated PowerShell. The script keeps the password in memory and cleans up the temporary mapping and test files:
+
+```powershell
+.\scripts\windows-dav-smoke.ps1
+```
+
 ## Architecture
 
 ```text
@@ -89,6 +101,8 @@ Deployment creates or changes cloud resources. Back up D1 and R2 before upgradin
 ```bash
 npx wrangler d1 create pocket-relay
 npx wrangler r2 bucket create pocket-relay-files
+npx wrangler r2 bucket create pocket-relay-drive
+npx wrangler r2 bucket create pocket-relay-gallery
 ```
 
 Copy the D1 `database_id` into `wrangler.jsonc` and confirm that the R2 bucket name matches your configuration. Existing installations may keep legacy D1 and R2 resource names; the product rename does not require a storage migration.
@@ -99,6 +113,7 @@ Production uses `https://drop.rowanjove.top`. If you deploy to another domain, r
 
 ```bash
 npx wrangler r2 bucket cors set pocket-relay-files --file cors.json
+npx wrangler r2 bucket cors set pocket-relay-drive --file drive-cors.json
 ```
 
 ### 3. Configure production secrets
@@ -106,6 +121,7 @@ npx wrangler r2 bucket cors set pocket-relay-files --file cors.json
 ```bash
 npx wrangler secret put ADMIN_PASSWORD
 npx wrangler secret put UPLOAD_TOKEN
+npx wrangler secret put GALLERY_ADMIN_TOKEN
 npx wrangler secret put SHORTCUT_TOKEN
 npx wrangler secret put R2_ACCESS_KEY_ID
 npx wrangler secret put R2_SECRET_ACCESS_KEY
@@ -130,7 +146,23 @@ npm run db:remove-v1:remote
 
 ### 5. R2 lifecycle safety net
 
-Configure an R2 lifecycle rule to delete objects after eight days. The maximum application lifetime is seven days; the extra day makes this a safety net for orphaned objects without shortening valid drops.
+Configure an eight-day object expiration lifecycle rule only for the temporary `pocket-relay-files` bucket. The maximum application lifetime is seven days. Gallery uses the separate permanent `pocket-relay-gallery` bucket and must not have automatic object expiration; deletion is handled by its queue and cron. `pocket-relay-drive` is also permanent storage.
+
+### 6. Credential boundaries
+
+The Cloudflare API token in the desktop key image is only for local Wrangler/API administration. It is not a Worker secret. The Worker runtime needs these seven secrets:
+
+```text
+ADMIN_PASSWORD          Admin session password
+UPLOAD_TOKEN            Drop upload bearer token
+GALLERY_ADMIN_TOKEN     Gallery list/delete admin token (upload-only token has no management access)
+SHORTCUT_TOKEN          iOS Shortcut bearer token
+R2_ACCESS_KEY_ID        R2 S3 API token access key
+R2_SECRET_ACCESS_KEY    R2 S3 API token secret key
+R2_ACCOUNT_ID           Cloudflare account ID
+```
+
+Run `npx wrangler secret put NAME` for each value. Never commit the image, `.dev.vars`, S3 secrets, or WebDAV passwords. `UPLOAD_TOKEN` is upload-only; Gallery listing and deletion require an admin session or `X-Gallery-Admin-Token`. Generate a separate one-time WebDAV password per device from `/drive` or the admin device page. After deployment, use `/api/v1/ready` to verify all three R2 buckets, D1, and rate-limit bindings.
 
 ## iOS Shortcuts example
 
@@ -191,5 +223,6 @@ The web composer now has a Paste button in the text field. The browser asks for 
 ## Version and license
 
 - [Changelog](CHANGELOG.md)
+- [v3.0.0 release notes](release/RELEASE_NOTES_v3.0.0.md)
 - [v2.1.0 release notes](release/RELEASE_NOTES_v2.1.0.md)
 - [MIT License](LICENSE)

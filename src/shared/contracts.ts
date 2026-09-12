@@ -138,6 +138,14 @@ export interface AdminOverviewData {
   createdTodayCount: number;
   activeTotalFileBytes: number;
   expiringIn24hCount: number;
+  drive?: {
+    activeNodeCount: number;
+    activeFileCount: number;
+    activeBytes: number;
+    trashedNodeCount: number;
+    pendingUploadCount: number;
+    activeDeviceCount: number;
+  };
 }
 
 export interface AdminDropRowDto {

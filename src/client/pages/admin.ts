@@ -171,7 +171,13 @@ export async function createAdminPage(): Promise<HTMLElement> {
       renderTableRows(tableWrapper, res.drops, loadTable);
     }
 
-    searchInput.addEventListener("input", () => loadTable());
+    let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
+    searchInput.addEventListener("input", () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        void loadTable();
+      }, 250);
+    });
     statusSelect.addEventListener("change", () => loadTable());
 
     await loadTable();

@@ -75,7 +75,7 @@ export async function createDropPage(params: { code?: string }): Promise<HTMLEle
   }
 
   if (fileItems.length > 0) {
-    contentWrapper.appendChild(renderFilesGrid(fileItems));
+    contentWrapper.appendChild(renderFilesGrid(fileItems, code));
   }
 
   return container;
@@ -162,7 +162,7 @@ function renderFormattedTextToDom(container: HTMLElement, rawText: string): void
   }
 }
 
-function renderFilesGrid(files: FileItemDetail[]): HTMLElement {
+function renderFilesGrid(files: FileItemDetail[], code: string): HTMLElement {
   const card = document.createElement("div");
   card.className = "detail-files-card";
 
@@ -211,11 +211,94 @@ function renderFilesGrid(files: FileItemDetail[]): HTMLElement {
     downloadBtn.download = file.filename;
 
     itemCard.appendChild(downloadBtn);
+
+    const saveBtn = document.createElement("button");
+    saveBtn.type = "button";
+    saveBtn.className = "btn btn-secondary btn-sm";
+    saveBtn.textContent = t("drive.saveToDrive");
+    saveBtn.addEventListener("click", async () => {
+      try {
+        const parentId = await chooseDriveDestination();
+        if (parentId === null) return;
+        await api.saveDropFileToDrive(code, file.id, parentId);
+        saveBtn.textContent = t("drive.saveToDriveSuccess");
+        saveBtn.disabled = true;
+      } catch (error) {
+        saveBtn.textContent = error instanceof Error && "status" in error && (error as any).status === 401
+          ? t("drive.loginRequired")
+          : t("drive.saveToDriveFailed");
+      }
+    });
+    itemCard.appendChild(saveBtn);
+
     grid.appendChild(itemCard);
   }
 
   card.appendChild(grid);
   return card;
+}
+
+async function chooseDriveDestination(): Promise<string | undefined | null> {
+  const overlay = document.createElement("div");
+  overlay.className = "drive-modal-backdrop";
+  const dialog = document.createElement("div");
+  dialog.className = "drive-modal";
+  const title = document.createElement("h2");
+  title.textContent = t("drive.saveToDrive");
+  const select = document.createElement("select");
+  select.className = "drive-folder-select";
+  const root = document.createElement("option");
+  root.value = "";
+  root.textContent = t("drive.inboxDefault");
+  select.appendChild(root);
+  const folders: Array<{ id: string; label: string }> = [];
+  const loadFolders = async (parentId: string, depth: number, prefix: string) => {
+    if (depth > 20 || folders.length >= 2000) return;
+    let cursor: string | undefined;
+    do {
+      const result = await api.listDrive(parentId, cursor, 200);
+      for (const node of result.nodes.filter((item) => item.kind === "folder")) {
+        folders.push({ id: node.id, label: `${prefix}${node.name}` });
+        await loadFolders(node.id, depth + 1, `${prefix}  `);
+        if (folders.length >= 2000) break;
+      }
+      cursor = result.nextCursor || undefined;
+    } while (cursor && folders.length < 2000);
+  };
+  try {
+    await loadFolders("drive-root", 0, "");
+  } catch (error) {
+    overlay.remove();
+    throw error;
+  }
+  for (const folder of folders) {
+    const option = document.createElement("option");
+    option.value = folder.id;
+    option.textContent = folder.label;
+    select.appendChild(option);
+  }
+  const actions = document.createElement("div");
+  actions.className = "drive-modal-actions";
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = t("drive.cancel");
+  const confirmButton = document.createElement("button");
+  confirmButton.type = "button";
+  confirmButton.className = "primary-btn";
+  confirmButton.textContent = t("drive.save");
+  actions.appendChild(cancel);
+  actions.appendChild(confirmButton);
+  dialog.appendChild(title);
+  dialog.appendChild(select);
+  dialog.appendChild(actions);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+  return new Promise((resolve) => {
+    const close = (value: string | undefined | null) => { overlay.remove(); resolve(value); };
+    cancel.addEventListener("click", () => close(null));
+    confirmButton.addEventListener("click", () => close(select.value || undefined));
+    overlay.addEventListener("click", (event) => { if (event.target === overlay) close(null); });
+  });
 }
 
 function renderExpiredState(message?: string): HTMLElement {

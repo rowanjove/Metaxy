@@ -1,8 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+  "account_id": "3c26e711426605a859980743a286e21f",
   "name": "metaxy",
   "main": "src/worker/index.ts",
-  "compatibility_date": "2026-09-01",
+  "compatibility_date": "2026-09-04",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "routes": [
@@ -18,7 +19,10 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": [
       "/api/*",
-      "/d/*"
+      "/d/*",
+      "/i/*",
+      "/dav",
+      "/dav/*"
     ]
   },
 
@@ -26,7 +30,7 @@
     {
       "binding": "DB",
       "database_name": "pocket-relay",
-      "database_id": "33e30baf-0a6c-4336-9da6-51f6f4a27fa2",
+      "database_id": "ffa68a4e-530a-426b-9efb-fbabf5ac5b7c",
       "migrations_dir": "./migrations"
     }
   ],
@@ -35,6 +39,14 @@
     {
       "binding": "FILES",
       "bucket_name": "pocket-relay-files"
+    },
+    {
+      "binding": "DRIVE",
+      "bucket_name": "pocket-relay-drive"
+    },
+    {
+      "binding": "GALLERY",
+      "bucket_name": "pocket-relay-gallery"
     }
   ],
 
@@ -53,6 +65,16 @@
       "name": "RETRIEVE_RATE_LIMITER",
       "namespace_id": "1003",
       "simple": { "limit": 60, "period": 60 }
+    },
+    {
+      "name": "DRIVE_RATE_LIMITER",
+      "namespace_id": "1004",
+      "simple": { "limit": 120, "period": 60 }
+    },
+    {
+      "name": "DAV_RATE_LIMITER",
+      "namespace_id": "1005",
+      "simple": { "limit": 240, "period": 60 }
     }
   ],
 
@@ -64,7 +86,13 @@
     "MAX_TEXT_BYTES_HARD": "5242880",
     "MAX_FILES_PER_DROP_HARD": "10",
     "PRESIGNED_URL_TTL_SECONDS": "300",
-    "R2_BUCKET_NAME": "pocket-relay-files"
+    "R2_BUCKET_NAME": "pocket-relay-files",
+    "DRIVE_ENABLED": "true",
+    "DRIVE_BUCKET_NAME": "pocket-relay-drive",
+    "GALLERY_BUCKET_NAME": "pocket-relay-gallery",
+    "DAV_USERNAME": "admin",
+    "DRIVE_MAX_FILE_BYTES_HARD": "52428800",
+    "DAV_MAX_FILE_BYTES_HARD": "52428800"
   },
 
   "triggers": {

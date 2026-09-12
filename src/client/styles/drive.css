@@ -1,0 +1,40 @@
+.drive-page { min-height: 420px; }
+.drive-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.drive-header h1 { margin: 0; font-size: 22px; }
+.drive-actions, .drive-search-bar, .drive-list-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.drive-actions button, .drive-row-actions button { border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-subtle); color: var(--text-secondary); padding: 7px 10px; cursor: pointer; }
+.drive-actions .primary-btn { background: var(--primary); color: var(--text-inverse); border-color: var(--primary); }
+.drive-search-bar { margin-bottom: 12px; }
+.drive-search-bar input { flex: 1; min-width: 180px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 10px; background: var(--bg-surface); color: var(--text-primary); }
+.drive-search-bar button, .drive-list-controls button { border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-subtle); color: var(--text-secondary); padding: 7px 10px; cursor: pointer; }
+.drive-search-bar .primary-btn { background: var(--primary); color: var(--text-inverse); border-color: var(--primary); }
+.drive-breadcrumbs { margin-bottom: 12px; color: var(--text-muted); font-size: 13px; }
+.drive-breadcrumbs button { border: 0; background: none; color: var(--primary); cursor: pointer; padding: 0; }
+.drive-drop-zone { border: 1px dashed var(--border-color); border-radius: var(--radius-sm); color: var(--text-muted); padding: 10px 12px; margin-bottom: 12px; text-align: center; }
+.drive-drop-zone.is-over { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.drive-upload-queue { border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; margin-bottom: 12px; }
+.drive-upload-row, .drive-device-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-color); }
+.drive-upload-row:last-child, .drive-device-row:last-child { border-bottom: 0; }
+.drive-list { border-top: 1px solid var(--border-color); }
+.drive-list-controls { justify-content: flex-end; margin-bottom: 8px; }
+.drive-list-controls span { margin-right: auto; color: var(--text-muted); font-size: 13px; }
+.drive-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) 100px 170px minmax(220px, auto); align-items: center; gap: 10px; min-height: 48px; border-bottom: 1px solid var(--border-color); }
+.drive-name { border: 0; background: none; text-align: left; color: var(--text-primary); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drive-size { color: var(--text-muted); font-size: 13px; }
+.drive-date { color: var(--text-muted); font-size: 12px; }
+.drive-row-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.drive-row-actions button { font-size: 12px; }
+.drive-empty { color: var(--text-muted); padding: 24px 0; text-align: center; }
+.drive-modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgb(0 0 0 / 45%); }
+.drive-modal { width: min(520px, 100%); max-height: 80vh; overflow: auto; background: var(--bg-surface); color: var(--text-primary); border-radius: var(--radius-md); padding: 20px; box-shadow: 0 12px 36px rgb(0 0 0 / 20%); }
+.drive-modal h2 { margin: 0 0 14px; font-size: 18px; }
+.drive-folder-select { width: 100%; padding: 9px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-surface); color: var(--text-primary); }
+.drive-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.drive-modal-actions button { border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; cursor: pointer; }
+.drive-modal-actions .primary-btn { background: var(--primary); border-color: var(--primary); color: var(--text-inverse); }
+@media (max-width: 640px) {
+  .drive-header { align-items: flex-start; flex-direction: column; }
+  .drive-row { grid-template-columns: 24px minmax(0, 1fr) 76px; }
+  .drive-date { display: none; }
+  .drive-row-actions { grid-column: 1 / -1; justify-content: flex-start; padding-bottom: 8px; }
+}

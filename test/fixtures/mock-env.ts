@@ -110,6 +110,8 @@ export function createMockD1(): D1Database {
   const settings = new Map<string, any>();
   const adminSessions = new Map<string, any>();
   const objectDeletions = new Map<string, any>();
+  const galleryImages = new Map<string, any>();
+  const galleryObjectDeletions = new Map<string, any>();
 
   // Default seed settings
   settings.set("site_name", { key: "site_name", value: "之间门", updated_at: Date.now() });
@@ -588,8 +590,140 @@ export function createMockD1(): D1Database {
       return { meta: { changes: 1 } };
     }
 
+    // Gallery queries
+    if (s.startsWith("INSERT INTO gallery_images")) {
+      const [id, object_key, filename, content_type, size_bytes, width, height, hash, created_at, view_count, last_viewed_at] = params;
+      galleryImages.set(id, {
+        id, object_key, filename, content_type, size_bytes, width, height, hash, created_at, view_count: view_count ?? 0, last_viewed_at: last_viewed_at ?? null, status: "active"
+      });
+      return { meta: { changes: 1 } };
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_images WHERE id = ?")) {
+      const [id] = params;
+      return galleryImages.get(id) || null;
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_images WHERE hash = ?")) {
+      const [hash] = params;
+      for (const img of galleryImages.values()) {
+        if (img.hash === hash && img.status === "active") return img;
+      }
+      return null;
+    }
+
+    if (s.startsWith("UPDATE gallery_images SET view_count = view_count + 1")) {
+      const [viewedAt, id] = params;
+      const img = galleryImages.get(id);
+      if (img) {
+        img.view_count++;
+        img.last_viewed_at = viewedAt;
+      }
+      return { meta: { changes: 1 } };
+    }
+
+    if (s.startsWith("SELECT COUNT(*) as count FROM gallery_images")) {
+      return { count: Array.from(galleryImages.values()).filter((img) => img.status === "active").length };
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_images WHERE status = 'active' AND (created_at < ?")) {
+      const [cursorCreatedAt, cursorCreatedAtAgain, cursorId, limit] = params;
+      const all = Array.from(galleryImages.values())
+        .filter((img: any) => img.status === "active" && (img.created_at < cursorCreatedAt || (img.created_at === cursorCreatedAtAgain && img.id < cursorId)))
+        .sort((a: any, b: any) => b.created_at - a.created_at || b.id.localeCompare(a.id))
+        .slice(0, limit);
+      return { results: all };
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_images WHERE status = 'active' ORDER BY created_at DESC")) {
+      const [limit] = params;
+      const all = Array.from(galleryImages.values())
+        .filter((img: any) => img.status === "active")
+        .sort((a: any, b: any) => b.created_at - a.created_at || b.id.localeCompare(a.id))
+        .slice(0, limit);
+      return { results: all };
+    }
+
+    if (s.startsWith("UPDATE gallery_images SET status = 'deleting'")) {
+      const [id] = params;
+      const img = galleryImages.get(id);
+      if (!img || img.status !== "active") return { meta: { changes: 0 } };
+      img.status = "deleting";
+      return { meta: { changes: 1 } };
+    }
+
+    if (s.startsWith("INSERT INTO gallery_object_deletions")) {
+      const [object_key, image_id, created_at, not_before] = params;
+      const existing = galleryObjectDeletions.get(object_key);
+      galleryObjectDeletions.set(object_key, {
+        object_key,
+        image_id: existing?.image_id ?? image_id,
+        created_at: existing?.created_at ?? created_at,
+        not_before: Math.max(existing?.not_before ?? 0, not_before),
+        attempts: existing?.attempts ?? 0,
+        last_attempt_at: existing?.last_attempt_at ?? null
+      });
+      return { meta: { changes: 1 } };
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_object_deletions")) {
+      const [now, _retryNow, limit] = params;
+      const list = Array.from(galleryObjectDeletions.values())
+        .filter((item) => item.not_before <= now)
+        .sort((a, b) => a.attempts - b.attempts || (a.created_at - b.created_at))
+        .slice(0, limit || 20);
+      return { results: list };
+    }
+
+    if (s.startsWith("UPDATE gallery_object_deletions SET attempts = attempts + 1")) {
+      const [attemptedAt, objectKey] = params;
+      const item = galleryObjectDeletions.get(objectKey);
+      if (item) {
+        item.attempts++;
+        item.last_attempt_at = attemptedAt;
+      }
+      return { meta: { changes: item ? 1 : 0 } };
+    }
+
+    if (s.startsWith("DELETE FROM gallery_object_deletions WHERE object_key = ?")) {
+      galleryObjectDeletions.delete(params[0]);
+      return { meta: { changes: 1 } };
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_object_deletions")) {
+      const [now, retryNow, requestedLimit] = params;
+      const rows = Array.from(galleryObjectDeletions.values())
+        .filter((row: any) => row.not_before <= now && (row.last_attempt_at === null || row.last_attempt_at <= retryNow - Math.min(3_600_000, 60_000 * (row.attempts + 1))))
+        .sort((a: any, b: any) => a.attempts - b.attempts || (a.last_attempt_at || 0) - (b.last_attempt_at || 0) || a.created_at - b.created_at)
+        .slice(0, requestedLimit || 20);
+      return { results: rows };
+    }
+
+    if (s.startsWith("UPDATE gallery_object_deletions SET attempts = attempts + 1")) {
+      const [now, objectKey] = params;
+      const row = galleryObjectDeletions.get(objectKey);
+      if (row) {
+        row.attempts++;
+        row.last_attempt_at = now;
+      }
+      return { meta: { changes: 1 } };
+    }
+
+    if (s.startsWith("DELETE FROM gallery_images WHERE id = ? AND object_key = ?")) {
+      const [id, objectKey] = params;
+      const img = galleryImages.get(id);
+      const had = Boolean(img && img.object_key === objectKey && galleryImages.delete(id));
+      return { meta: { changes: had ? 1 : 0 } };
+    }
+
+    if (s.startsWith("DELETE FROM gallery_images WHERE id = ?")) {
+      const [id] = params;
+      const had = galleryImages.delete(id);
+      return { meta: { changes: had ? 1 : 0 } };
+    }
+
     if (s.startsWith("SELECT COUNT(*) AS count FROM sqlite_master")) {
-      return { count: 6 };
+      return { count: 8 };
     }
 
     // Fallback
@@ -624,6 +758,7 @@ export function createMockEnv(overrides: Partial<Env> = {}): Env {
   return {
     DB: createMockD1(),
     FILES: createMockR2(),
+    GALLERY: createMockR2(),
     ASSETS: { fetch: async () => new Response("<html>mock asset</html>") } as unknown as Fetcher,
     LOGIN_RATE_LIMITER: { limit: async () => ({ success: true }) } as unknown as RateLimit,
     UPLOAD_RATE_LIMITER: { limit: async () => ({ success: true }) } as unknown as RateLimit,
@@ -637,6 +772,8 @@ export function createMockEnv(overrides: Partial<Env> = {}): Env {
     R2_SECRET_ACCESS_KEY: "mock-secret-key",
     R2_ACCOUNT_ID: "mock-account-id",
     R2_BUCKET_NAME: "pocket-relay-files",
+    GALLERY_BUCKET_NAME: "pocket-relay-gallery",
+    GALLERY_ADMIN_TOKEN: "test-gallery-admin-token",
     ...overrides
   };
 }

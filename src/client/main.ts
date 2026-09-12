@@ -3,6 +3,8 @@ import "./styles/base.css";
 import "./styles/layout.css";
 import "./styles/components.css";
 import "./styles/admin.css";
+import "./styles/drive.css";
+import "./styles/gallery.css";
 
 import { t, getLocale, setLocale, onLocaleChange } from "./i18n";
 import { getTheme, setTheme, applyThemeToDom, onThemeChange } from "./state";
@@ -11,6 +13,8 @@ import { createHomePage } from "./pages/home";
 import { createDropPage } from "./pages/drop";
 import { createAdminLoginPage } from "./pages/admin-login";
 import { createAdminPage } from "./pages/admin";
+import { createDrivePage } from "./pages/drive";
+import { createGalleryPage } from "./pages/gallery";
 
 // Initialize Theme
 applyThemeToDom(getTheme());
@@ -19,6 +23,8 @@ function renderApp() {
   const root = document.getElementById("app");
   if (!root) return;
 
+  const previousOutlet = document.getElementById("app-outlet");
+  (previousOutlet?.firstElementChild as (HTMLElement & { dispose?: () => void }) | null)?.dispose?.();
   root.replaceChildren();
 
   // Header
@@ -64,28 +70,56 @@ function renderApp() {
   // Theme Toggle Button
   const themeBtn = document.createElement("button");
   themeBtn.type = "button";
-  themeBtn.className = "header-btn";
-  const currentTheme = getTheme();
-  themeBtn.textContent = currentTheme === "dark" ? "☀️ " + t("app.lightTheme") : "🌙 " + t("app.darkTheme");
+  themeBtn.className = "header-btn theme-toggle";
+  const themeIcon = document.createElement("span");
+  themeIcon.className = "theme-toggle-icon";
+  themeIcon.setAttribute("aria-hidden", "true");
+  themeBtn.appendChild(themeIcon);
+
+  const isDarkTheme = () => {
+    const theme = getTheme();
+    return theme === "dark" || (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  };
+
+  const updateThemeButton = () => {
+    const isDark = isDarkTheme();
+    const label = isDark ? t("app.lightTheme") : t("app.darkTheme");
+    themeIcon.textContent = isDark ? "☀" : "☾";
+    themeBtn.setAttribute("aria-label", label);
+    themeBtn.title = label;
+  };
+
+  updateThemeButton();
   themeBtn.addEventListener("click", () => {
-    const nextTheme = getTheme() === "dark" ? "light" : "dark";
+    const nextTheme = isDarkTheme() ? "light" : "dark";
     setTheme(nextTheme);
-    themeBtn.textContent = nextTheme === "dark" ? "☀️ " + t("app.lightTheme") : "🌙 " + t("app.darkTheme");
+    updateThemeButton();
   });
 
-  // Admin Link
-  const adminBtn = document.createElement("a");
-  adminBtn.href = "/admin";
-  adminBtn.className = "header-btn";
-  adminBtn.textContent = t("app.admin");
-  adminBtn.addEventListener("click", (e) => {
+  // Gallery Link
+  const galleryBtn = document.createElement("a");
+  galleryBtn.href = "/gallery";
+  galleryBtn.className = "header-btn";
+  galleryBtn.textContent = t("gallery.nav");
+  galleryBtn.addEventListener("click", (e) => {
     e.preventDefault();
-    router.navigate("/admin");
+    router.navigate("/gallery");
+  });
+
+  // Drive Link
+  const driveBtn = document.createElement("a");
+  driveBtn.href = "/drive";
+  driveBtn.className = "header-btn";
+  driveBtn.textContent = t("drive.nav");
+  driveBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    router.navigate("/drive");
   });
 
   actions.appendChild(localeBtn);
   actions.appendChild(themeBtn);
-  actions.appendChild(adminBtn);
+  actions.appendChild(galleryBtn);
+  actions.appendChild(driveBtn);
 
   headerInner.appendChild(brandLink);
   headerInner.appendChild(actions);
@@ -107,6 +141,8 @@ router
   .addRoute("/", () => createHomePage())
   .addRoute("/d/:code", (params) => createDropPage(params))
   .addRoute("/admin/login", () => createAdminLoginPage())
+  .addRoute("/drive", () => createDrivePage())
+  .addRoute("/gallery", () => createGalleryPage())
   .addRoute("/admin", () => createAdminPage());
 
 // Re-render whole UI when locale changes

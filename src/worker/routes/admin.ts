@@ -26,6 +26,7 @@ import {
   getItemsByDropId,
   getFilesByDropId
 } from "../repositories/files";
+import { getDriveOverviewStats } from "../repositories/drive";
 import {
   getHardLimits,
   getParsedSettings,
@@ -92,11 +93,15 @@ adminRoutes.post("/admin/logout-all", adminSessionMiddleware, adminCsrfMiddlewar
 adminRoutes.get("/admin/overview", adminSessionMiddleware, async (c) => {
   const now = Date.now();
   const stats = await getAdminOverviewStats(c.env.DB, now);
+  // Match readiness and Drive route gating: a binding alone must not opt a
+  // legacy or intentionally disabled deployment into Drive-table queries.
+  const drive = c.env.DRIVE && c.env.DRIVE_ENABLED === "true" ? await getDriveOverviewStats(c.env.DB) : undefined;
   const data: AdminOverviewData = {
     activeDropsCount: stats.activeDropsCount,
     createdTodayCount: stats.createdTodayCount,
     activeTotalFileBytes: stats.activeTotalFileBytes,
-    expiringIn24hCount: stats.expiringIn24hCount
+    expiringIn24hCount: stats.expiringIn24hCount,
+    drive
   };
   return jsonSuccess(c, data);
 });

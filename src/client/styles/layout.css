@@ -60,6 +60,17 @@
   text-decoration: none;
 }
 
+.theme-toggle {
+  width: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+.theme-toggle-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
 /* Main Container */
 .app-main {
   width: min(var(--max-width), calc(100% - 32px));

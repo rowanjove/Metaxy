@@ -230,21 +230,23 @@ export async function commitDrop(
     );
   }
 
-  // Verify R2 object existence for each file
-  for (const file of files) {
-    const head = await env.FILES.head(file.object_key);
-    if (
-      !head ||
-      head.size !== (file.actual_size ?? file.expected_size) ||
-      (file.etag && head.httpEtag && file.etag !== head.httpEtag)
-    ) {
-      throw new AppError(
-        409,
-        ERROR_CODES.FILE_NOT_VERIFIED,
-        `File ${file.filename} was not found in storage or size mismatch.`
-      );
-    }
-  }
+  // Verify R2 object existence for each file in parallel
+  await Promise.all(
+    files.map(async (file) => {
+      const head = await env.FILES.head(file.object_key);
+      if (
+        !head ||
+        head.size !== (file.actual_size ?? file.expected_size) ||
+        (file.etag && head.httpEtag && file.etag !== head.httpEtag)
+      ) {
+        throw new AppError(
+          409,
+          ERROR_CODES.FILE_NOT_VERIFIED,
+          `File ${file.filename} was not found in storage or size mismatch.`
+        );
+      }
+    })
+  );
 
   // Calculate totals
   const totalFileSize = files.reduce((acc, f) => acc + (f.actual_size ?? f.expected_size), 0);

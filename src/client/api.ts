@@ -11,6 +11,8 @@ import type {
   AdminSettingsData,
   UpdateSettingsRequest
 } from "../shared/contracts";
+import type { DriveListResult, DriveUploadPrepareResult, DriveUploadCompleteResult, DriveNodeDto } from "../shared/drive-contracts";
+import type { GalleryImageDto, GalleryListResponse } from "../shared/gallery-contracts";
 import { getSavedUploadToken } from "./state";
 import { t } from "./i18n";
 
@@ -150,12 +152,18 @@ export const api = {
     uploadUrl: string,
     file: Blob,
     contentType: string,
-    onProgress: (percent: number) => void
+    onProgress: (percent: number) => void,
+    signal?: AbortSignal
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
+      const abort = () => xhr.abort();
       xhr.open("PUT", uploadUrl, true);
       xhr.setRequestHeader("Content-Type", contentType);
+      if (signal) {
+        if (signal.aborted) { reject(new DOMException("Upload cancelled", "AbortError")); return; }
+        signal.addEventListener("abort", abort, { once: true });
+      }
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
@@ -165,6 +173,7 @@ export const api = {
       };
 
       xhr.onload = () => {
+        signal?.removeEventListener("abort", abort);
         if (xhr.status >= 200 && xhr.status < 300) {
           onProgress(100);
           resolve();
@@ -174,7 +183,13 @@ export const api = {
       };
 
       xhr.onerror = () => {
+        signal?.removeEventListener("abort", abort);
         reject(new Error("Network error during file upload"));
+      };
+
+      xhr.onabort = () => {
+        signal?.removeEventListener("abort", abort);
+        reject(new DOMException("Upload cancelled", "AbortError"));
       };
 
       xhr.send(file);
@@ -244,6 +259,125 @@ export const api = {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings)
+    });
+  },
+
+  // Drive APIs
+  async listDrive(parentId?: string, cursor?: string, limit = 100): Promise<DriveListResult> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (parentId) params.set("parentId", parentId);
+    if (cursor) params.set("cursor", cursor);
+    return requestJson<DriveListResult>(`/api/v1/drive/nodes?${params.toString()}`);
+  },
+
+  async createDriveFolder(name: string, parentId?: string): Promise<DriveNodeDto> {
+    return requestJson<DriveNodeDto>("/api/v1/drive/folders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, parentId })
+    });
+  },
+
+  async prepareDriveUpload(file: { filename: string; size: number; contentType: string; parentId?: string }): Promise<DriveUploadPrepareResult & { uploadUrl: string; method: "PUT"; headers: { "Content-Type": string } }> {
+    return requestJson<DriveUploadPrepareResult & { uploadUrl: string; method: "PUT"; headers: { "Content-Type": string } }>("/api/v1/drive/uploads/prepare", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(file)
+    });
+  },
+
+  async completeDriveUpload(uploadId: string): Promise<DriveUploadCompleteResult> {
+    return requestJson<DriveUploadCompleteResult>(`/api/v1/drive/uploads/${encodeURIComponent(uploadId)}/complete`, { method: "POST" });
+  },
+
+  async renameDriveNode(id: string, name: string, version: number): Promise<DriveNodeDto> {
+    return requestJson<DriveNodeDto>(`/api/v1/drive/nodes/${encodeURIComponent(id)}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, version })
+    });
+  },
+
+  async moveDriveNode(id: string, parentId: string, version: number): Promise<DriveNodeDto> {
+    return requestJson<DriveNodeDto>(`/api/v1/drive/nodes/${encodeURIComponent(id)}/move`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parentId, version })
+    });
+  },
+
+  async copyDriveNode(id: string, parentId: string, name: string, overwrite = false): Promise<DriveNodeDto> {
+    return requestJson<DriveNodeDto>(`/api/v1/drive/nodes/${encodeURIComponent(id)}/copy`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parentId, name, overwrite })
+    });
+  },
+
+  async deleteDriveNode(id: string): Promise<void> {
+    await requestJson<void>(`/api/v1/drive/nodes/${encodeURIComponent(id)}`, { method: "DELETE" });
+  },
+
+  async shareDriveNode(id: string, expiresInSeconds = 86400): Promise<{ code: string; url: string; expiresAt: number }> {
+    return requestJson<{ code: string; url: string; expiresAt: number }>(`/api/v1/drive/nodes/${encodeURIComponent(id)}/share`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expiresInSeconds })
+    });
+  },
+
+  async saveDropFileToDrive(code: string, fileId: string, parentId?: string): Promise<DriveNodeDto> {
+    return requestJson<DriveNodeDto>("/api/v1/drive/import-drop", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code, fileId, parentId })
+    });
+  },
+
+  async createDriveDevice(name: string): Promise<{ id: string; name: string; username: string; password: string; createdAt: number }> {
+    return requestJson<{ id: string; name: string; username: string; password: string; createdAt: number }>("/api/v1/drive/devices", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name })
+    });
+  },
+
+  async listDriveDevices(): Promise<Array<{ id: string; name: string; username: string; createdAt: number; lastUsedAt: number | null }>> {
+    return requestJson<Array<{ id: string; name: string; username: string; createdAt: number; lastUsedAt: number | null }>>("/api/v1/drive/devices");
+  },
+
+  async revokeDriveDevice(id: string): Promise<void> {
+    await requestJson<void>(`/api/v1/drive/devices/${encodeURIComponent(id)}`, { method: "DELETE" });
+  },
+
+  async searchDrive(query: string): Promise<DriveNodeDto[]> {
+    return requestJson<DriveNodeDto[]>(`/api/v1/drive/search?q=${encodeURIComponent(query)}`);
+  },
+
+  async listDriveTrash(): Promise<DriveNodeDto[]> {
+    return requestJson<DriveNodeDto[]>("/api/v1/drive/trash");
+  },
+
+  async restoreDriveNode(id: string): Promise<DriveNodeDto> {
+    return requestJson<DriveNodeDto>(`/api/v1/drive/trash/${encodeURIComponent(id)}/restore`, { method: "POST" });
+  },
+
+  async uploadDriveFile(file: File, parentId: string, options: { onProgress?: (percent: number) => void; signal?: AbortSignal } = {}): Promise<DriveNodeDto> {
+    const prepared = await this.prepareDriveUpload({ filename: file.name, size: file.size, contentType: file.type || "application/octet-stream", parentId });
+    await this.uploadFileToR2(prepared.uploadUrl, file, prepared.headers["Content-Type"], options.onProgress || (() => undefined), options.signal);
+    const completed = await this.completeDriveUpload(prepared.uploadId);
+    return completed.node;
+  },
+
+  // Gallery APIs
+  async uploadGalleryImage(file: Blob, filename?: string): Promise<GalleryImageDto> {
+    const formData = new FormData();
+    formData.append("file", file, filename || (file instanceof File ? file.name : "image.webp"));
+    return requestJson<GalleryImageDto>("/api/v1/gallery/upload", {
+      method: "POST",
+      body: formData
+    });
+  },
+
+  async listGalleryImages(limit = 30, cursor?: string): Promise<GalleryListResponse> {
+    const params = new URLSearchParams();
+    if (limit) params.set("limit", String(limit));
+    if (cursor) params.set("cursor", cursor);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return requestJson<GalleryListResponse>(`/api/v1/gallery/images${query}`);
+  },
+
+  async deleteGalleryImage(id: string): Promise<void> {
+    await requestJson<void>(`/api/v1/gallery/images/${encodeURIComponent(id)}`, {
+      method: "DELETE"
     });
   }
 };

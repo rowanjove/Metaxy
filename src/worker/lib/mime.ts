@@ -4,6 +4,17 @@ import {
   INLINE_IMAGE_MIME_TYPES
 } from "../../shared/constants";
 
+const INLINE_DRIVE_MIME_TYPES = new Set([
+  "application/pdf",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "application/json",
+  "video/mp4",
+  "video/webm",
+  "video/ogg"
+]);
+
 /**
  * Extract lowercased file extensions.
  * Returns array of extensions (e.g. "photo.jpg.exe" -> ["jpg", "exe"])
@@ -53,4 +64,15 @@ export function isDangerousFile(filename: string, contentType?: string): boolean
 export function isInlinePreviewableImage(contentType: string): boolean {
   const cleanMime = (contentType || "").toLowerCase().split(";")[0].trim();
   return INLINE_IMAGE_MIME_TYPES.has(cleanMime);
+}
+
+/**
+ * Content types that may be rendered inline in the private Drive viewer.
+ * Keep this an explicit allow-list: HTML, SVG, scriptable XML and arbitrary
+ * application types must remain downloads even when a user supplied a name
+ * that looks harmless.
+ */
+export function isInlinePreviewableDriveContent(contentType: string): boolean {
+  const cleanMime = (contentType || "").toLowerCase().split(";")[0].trim();
+  return isInlinePreviewableImage(cleanMime) || INLINE_DRIVE_MIME_TYPES.has(cleanMime);
 }

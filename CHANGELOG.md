@@ -2,6 +2,27 @@
 
 本项目遵循[语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [3.0.0] - 2026-09-12
+
+### 新增
+
+- 私有 Drive 文件树、独立 R2 存储、网页直传、预览、重命名、移动、回收站和临时分享。
+- 独立设备 WebDAV 凭据，以及 `OPTIONS`、`PROPFIND`、`GET`、`HEAD`、`PUT`、`DELETE`、`MKCOL`、`COPY`、`MOVE`、`LOCK`、`UNLOCK`、`PROPPATCH`。
+- Drive 上传、替换对象和锁的 Cron 清理队列。
+- Gallery 使用独立永久 R2、D1 删除队列和管理员管理边界；上传请求采用有界读取与图片签名校验。
+- 公共导航默认隐藏管理后台入口，亮暗主题切换改为带无障碍标签的图标按钮。
+
+### 兼容性
+
+- 保留既有 Drop、提取码、Shortcut 和 `FILES` 生命周期语义。
+- WebDAV `PROPFIND Depth: 1` 支持最多 1,000 个直接子节点；禁用 Drive 时管理概览不会访问 Drive 表。
+
+### 工程
+
+- 更新 Cloudflare 本地工具链，修复 `sharp` / `libheif` 相关的高危开发依赖告警。
+
+[3.0.0]: https://github.com/rowanjove/metaxy/releases/tag/v3.0.0
+
 ## [2.1.0] - 2026-09-03
 
 ### 新增

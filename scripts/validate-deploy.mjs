@@ -4,12 +4,28 @@ import { readFileSync } from "node:fs";
 const failures = [];
 const wrangler = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
 const cors = readFileSync(new URL("../cors.json", import.meta.url), "utf8");
+const driveCors = readFileSync(new URL("../drive-cors.json", import.meta.url), "utf8");
 
 if (/00000000-0000-0000-0000-000000000000/.test(wrangler)) {
   failures.push("wrangler.jsonc still contains the placeholder D1 database_id");
 }
 if (/https:\/\/drop\.example\.com/i.test(cors)) {
   failures.push("cors.json still contains the example production origin");
+}
+if (/https:\/\/drop\.example\.com/i.test(driveCors)) {
+  failures.push("drive-cors.json still contains the example production origin");
+}
+if (!/\"binding\"\s*:\s*\"DRIVE\"/.test(wrangler)) {
+  failures.push("wrangler.jsonc is missing the DRIVE R2 binding");
+}
+if (!/\"DRIVE_BUCKET_NAME\"\s*:\s*\"[^\"]+\"/.test(wrangler)) {
+  failures.push("wrangler.jsonc is missing DRIVE_BUCKET_NAME");
+}
+if (!/\"binding\"\s*:\s*\"GALLERY\"/.test(wrangler)) {
+  failures.push("wrangler.jsonc is missing the GALLERY R2 binding");
+}
+if (!/\"GALLERY_BUCKET_NAME\"\s*:\s*\"[^\"]+\"/.test(wrangler)) {
+  failures.push("wrangler.jsonc is missing GALLERY_BUCKET_NAME");
 }
 
 const ttlMatch = wrangler.match(/"PRESIGNED_URL_TTL_SECONDS"\s*:\s*"(\d+)"/);

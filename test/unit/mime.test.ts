@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isDangerousFile, isInlinePreviewableImage } from "../../src/worker/lib/mime";
+import { isDangerousFile, isInlinePreviewableImage, isInlinePreviewableDriveContent } from "../../src/worker/lib/mime";
 
 describe("MIME and file security policies", () => {
   it("identifies dangerous executables and script extensions", () => {
@@ -40,5 +40,14 @@ describe("MIME and file security policies", () => {
     expect(isInlinePreviewableImage("image/svg+xml")).toBe(false);
     expect(isInlinePreviewableImage("text/html")).toBe(false);
     expect(isInlinePreviewableImage("application/pdf")).toBe(false);
+  });
+
+  it("allows only the private Drive preview allow-list", () => {
+    expect(isInlinePreviewableDriveContent("application/pdf")).toBe(true);
+    expect(isInlinePreviewableDriveContent("text/plain; charset=utf-8")).toBe(true);
+    expect(isInlinePreviewableDriveContent("video/mp4")).toBe(true);
+    expect(isInlinePreviewableDriveContent("text/html")).toBe(false);
+    expect(isInlinePreviewableDriveContent("image/svg+xml")).toBe(false);
+    expect(isInlinePreviewableDriveContent("application/javascript")).toBe(false);
   });
 });

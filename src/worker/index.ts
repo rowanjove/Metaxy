@@ -9,6 +9,10 @@ import { uploadsRoutes } from "./routes/uploads";
 import { filesRoutes } from "./routes/files";
 import { shortcutRoutes } from "./routes/shortcut";
 import { adminRoutes } from "./routes/admin";
+import { driveRoutes } from "./routes/drive";
+import { webdavRoutes } from "./routes/webdav";
+import { galleryRoutes } from "./routes/gallery";
+import { publicImageRoutes } from "./routes/public-image";
 import { runScheduledCleanup } from "./services/cleanup-service";
 
 export const app = new Hono<WorkerContext>();
@@ -16,12 +20,26 @@ export const app = new Hono<WorkerContext>();
 // Apply security headers to all responses
 app.use("*", securityHeadersMiddleware);
 
+// Mount public image direct links first
+app.route("/", publicImageRoutes);
+
 // Mount API routes
 app.route("/api/v1", metaRoutes);
 app.route("/api/v1", dropsRoutes);
 app.route("/api/v1", uploadsRoutes);
 app.route("/api/v1", filesRoutes);
 app.route("/api/v1", adminRoutes);
+app.route("/api/v1", driveRoutes);
+app.route("/api/v1", galleryRoutes);
+// Keep the WebDAV endpoint canonical. Without this exact route, Static
+// Assets' SPA fallback can serve /dav (without the slash) as an HTML page.
+app.all("/dav", (c) => {
+  const url = new URL(c.req.url);
+  url.pathname = "/dav/";
+  url.search = "";
+  return new Response(null, { status: 308, headers: { Location: url.toString() } });
+});
+app.route("/dav", webdavRoutes);
 app.route("/api", shortcutRoutes);
 
 // Fallback for unmatched API routes

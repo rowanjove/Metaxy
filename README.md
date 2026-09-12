@@ -31,6 +31,26 @@
 - **自动清理**：每分钟分批处理未提交草稿、过期内容、失效记录和孤儿对象。
 - **原生前端**：Vite + TypeScript + CSS，支持中英文、亮暗主题和移动端布局。
 
+## Drive 与 WebDAV（3.0）
+
+Drive 使用独立的 Private R2 Bucket 和独立 D1 目录模型；浏览器上传继续通过 Presigned PUT，WebDAV 通过独立设备密码访问 `/dav/`。Drive 删除进入回收站，原有 Drop、提取码和 Shortcut 数据模型不变。
+
+启用前需要创建 `pocket-relay-drive` Bucket，并为该 Bucket 配置最小权限 R2 S3 凭据。将 [drive-cors.json](drive-cors.json) 应用到 Drive Bucket 后，再运行：
+
+```text
+npm run db:migrate:remote
+npm run check
+npm run deploy:dry
+```
+
+首次访问 `/drive` 使用现有管理会话；在设备管理接口中生成独立 WebDAV 密码。WebDAV 默认沿用 50 MiB 单文件上限，大文件应优先使用网页 R2 直传。
+
+Windows 原生兼容性烟测可在管理员 PowerShell 中执行（脚本不会把密码写入命令行或输出）：
+
+```powershell
+.\scripts\windows-dav-smoke.ps1
+```
+
 ## 架构
 
 ```text
@@ -89,6 +109,8 @@ npm run dev
 ```bash
 npx wrangler d1 create pocket-relay
 npx wrangler r2 bucket create pocket-relay-files
+npx wrangler r2 bucket create pocket-relay-drive
+npx wrangler r2 bucket create pocket-relay-gallery
 ```
 
 将 D1 创建结果中的 `database_id` 写入 `wrangler.jsonc`，并确认 R2 Bucket 名称与配置一致。现有 D1/R2 使用旧版资源名时可以继续保留，品牌改名不要求迁移存储资源。
@@ -99,6 +121,7 @@ npx wrangler r2 bucket create pocket-relay-files
 
 ```bash
 npx wrangler r2 bucket cors set pocket-relay-files --file cors.json
+npx wrangler r2 bucket cors set pocket-relay-drive --file drive-cors.json
 ```
 
 ### 3. 配置生产 Secret
@@ -106,6 +129,7 @@ npx wrangler r2 bucket cors set pocket-relay-files --file cors.json
 ```bash
 npx wrangler secret put ADMIN_PASSWORD
 npx wrangler secret put UPLOAD_TOKEN
+npx wrangler secret put GALLERY_ADMIN_TOKEN
 npx wrangler secret put SHORTCUT_TOKEN
 npx wrangler secret put R2_ACCESS_KEY_ID
 npx wrangler secret put R2_SECRET_ACCESS_KEY
@@ -130,7 +154,23 @@ npm run db:remove-v1:remote
 
 ### 5. R2 生命周期兜底
 
-建议为 Bucket 配置 8 天后删除对象的生命周期规则。应用内最长保留期为 7 天；该规则用于 Cron 或数据库异常时清理孤儿对象，不应短于业务最长保留期。
+仅为临时 Drop 使用的 `pocket-relay-files` Bucket 配置 8 天后删除对象的生命周期规则；应用内最长保留期为 7 天。Gallery 使用独立的永久 `pocket-relay-gallery` Bucket，禁止配置自动对象过期，删除由 Gallery 队列与 Cron 负责。`pocket-relay-drive` 同样是永久文件空间。
+
+### 6. 凭据边界
+
+桌面密钥图片中的 Cloudflare API Token 只用于本机 Wrangler/API 操作，不写入 Worker Secret，也不提交仓库。Worker 运行时只需要下列七个 Secret：
+
+```text
+ADMIN_PASSWORD          管理后台登录密码
+UPLOAD_TOKEN            Drop 上传 Bearer Token
+GALLERY_ADMIN_TOKEN     Gallery 列表/删除管理令牌（上传令牌无管理权限）
+SHORTCUT_TOKEN          iOS 快捷指令 Bearer Token
+R2_ACCESS_KEY_ID        R2 S3 API Token 的 Access Key
+R2_SECRET_ACCESS_KEY    R2 S3 API Token 的 Secret Key
+R2_ACCOUNT_ID           Cloudflare Account ID
+```
+
+逐项执行 `npx wrangler secret put NAME` 输入值即可；不要把图片、`.dev.vars`、S3 Secret 或 WebDAV 密码放进 Git。`UPLOAD_TOKEN` 仅用于上传；Gallery 列表和删除必须使用管理员会话或 `X-Gallery-Admin-Token`。WebDAV 密码必须在 `/drive` 或管理后台的设备页单独生成，每台设备独立、只显示一次。部署后用 `/api/v1/ready` 确认三项 R2 Bucket、D1 和限流绑定均已就绪。
 
 ## iOS 快捷指令请求示例
 
@@ -191,5 +231,6 @@ X-Metaxy-Expires-In-Seconds: 86400
 ## 版本与许可
 
 - [更新日志](CHANGELOG.md)
+- [v3.0.0 发布公告](release/RELEASE_NOTES_v3.0.0.md)
 - [v2.1.0 发布公告](release/RELEASE_NOTES_v2.1.0.md)
 - [MIT License](LICENSE)

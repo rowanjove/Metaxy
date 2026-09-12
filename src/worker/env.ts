@@ -16,6 +16,16 @@ type GeneratedBindings = Omit<
   | "LOGIN_RATE_LIMITER"
   | "UPLOAD_RATE_LIMITER"
   | "RETRIEVE_RATE_LIMITER"
+  | "DRIVE_RATE_LIMITER"
+  | "DAV_RATE_LIMITER"
+  | "DRIVE"
+  | "GALLERY"
+  | "DRIVE_ENABLED"
+  | "DRIVE_BUCKET_NAME"
+  | "GALLERY_BUCKET_NAME"
+  | "DAV_USERNAME"
+  | "DRIVE_MAX_FILE_BYTES_HARD"
+  | "DAV_MAX_FILE_BYTES_HARD"
 >;
 
 export type Env = GeneratedBindings & {
@@ -27,14 +37,26 @@ export type Env = GeneratedBindings & {
   MAX_FILES_PER_DROP_HARD?: string;
   PRESIGNED_URL_TTL_SECONDS?: string;
   R2_BUCKET_NAME?: string;
+  DRIVE_ENABLED?: string;
+  DRIVE_MAX_FILE_BYTES_HARD?: string;
+  DAV_MAX_FILE_BYTES_HARD?: string;
+  DRIVE_BUCKET_NAME?: string;
+  GALLERY_BUCKET_NAME?: string;
+  DAV_USERNAME?: string;
+  DRIVE?: R2Bucket;
+  GALLERY?: R2Bucket;
 
   LOGIN_RATE_LIMITER?: RateLimit;
   UPLOAD_RATE_LIMITER?: RateLimit;
   RETRIEVE_RATE_LIMITER?: RateLimit;
+  DRIVE_RATE_LIMITER?: RateLimit;
+  DAV_RATE_LIMITER?: RateLimit;
 
   ADMIN_PASSWORD?: string;
   UPLOAD_TOKEN?: string;
   SHORTCUT_TOKEN?: string;
+  GALLERY_ALLOWED_REFERERS?: string;
+  GALLERY_ADMIN_TOKEN?: string;
   R2_ACCESS_KEY_ID?: string;
   R2_SECRET_ACCESS_KEY?: string;
   R2_ACCOUNT_ID?: string;
@@ -47,6 +69,10 @@ export interface WorkerContext {
     adminSession?: {
       id: string;
       tokenHash: string;
+    };
+    davDevice?: {
+      id: string;
+      username: string;
     };
   };
 }
