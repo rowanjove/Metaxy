@@ -112,6 +112,8 @@ export function createMockD1(): D1Database {
   const objectDeletions = new Map<string, any>();
   const galleryImages = new Map<string, any>();
   const galleryObjectDeletions = new Map<string, any>();
+  const galleryUploads = new Map<string, any>();
+  const galleryAlbums = new Map<string, any>();
 
   // Default seed settings
   settings.set("site_name", { key: "site_name", value: "之间门", updated_at: Date.now() });
@@ -592,11 +594,123 @@ export function createMockD1(): D1Database {
 
     // Gallery queries
     if (s.startsWith("INSERT INTO gallery_images")) {
-      const [id, object_key, filename, content_type, size_bytes, width, height, hash, created_at, view_count, last_viewed_at] = params;
-      galleryImages.set(id, {
-        id, object_key, filename, content_type, size_bytes, width, height, hash, created_at, view_count: view_count ?? 0, last_viewed_at: last_viewed_at ?? null, status: "active"
+      if (params.length >= 17) {
+        const [
+          id, object_key, filename, content_type, size_bytes,
+          original_size_bytes, thumb_object_key, width, height, hash,
+          favorite, album_id, dominant_color, metadata_json,
+          created_at, view_count, last_viewed_at
+        ] = params;
+        galleryImages.set(id, {
+          id, object_key, filename, content_type, size_bytes,
+          original_size_bytes, thumb_object_key, width, height, hash,
+          favorite: favorite ?? 0, album_id: album_id ?? null,
+          dominant_color: dominant_color ?? null, metadata_json: metadata_json ?? null,
+          created_at, view_count: view_count ?? 0, last_viewed_at: last_viewed_at ?? null, status: "active"
+        });
+      } else {
+        const [id, object_key, filename, content_type, size_bytes, width, height, hash, created_at, view_count, last_viewed_at] = params;
+        galleryImages.set(id, {
+          id, object_key, filename, content_type, size_bytes, width, height, hash, created_at, view_count: view_count ?? 0, last_viewed_at: last_viewed_at ?? null, status: "active"
+        });
+      }
+      return { meta: { changes: 1 } };
+    }
+
+    if (s.startsWith("UPDATE gallery_images SET favorite = ?")) {
+      const [favorite, id] = params;
+      const img = galleryImages.get(id);
+      if (img && img.status === "active") {
+        img.favorite = favorite;
+        return { meta: { changes: 1 } };
+      }
+      return { meta: { changes: 0 } };
+    }
+
+    if (s.startsWith("UPDATE gallery_images SET album_id = ?")) {
+      const [albumId, id] = params;
+      const img = galleryImages.get(id);
+      if (img && img.status === "active") {
+        img.album_id = albumId;
+        return { meta: { changes: 1 } };
+      }
+      return { meta: { changes: 0 } };
+    }
+
+    // Gallery Uploads (sessions)
+    if (s.startsWith("INSERT INTO gallery_uploads")) {
+      const [id, image_id, staging_object_key, thumb_staging_object_key, thumb_expected_size, filename, expected_size, expected_content_type, width, height, created_at, expires_at, status] = params;
+      galleryUploads.set(id, {
+        id, image_id, staging_object_key, thumb_staging_object_key, thumb_expected_size, filename, expected_size, expected_content_type, width, height, created_at, expires_at, status
       });
       return { meta: { changes: 1 } };
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_uploads WHERE id = ?")) {
+      const [id] = params;
+      return galleryUploads.get(id) || null;
+    }
+
+    if (s.startsWith("UPDATE gallery_uploads SET status = ? WHERE id = ?")) {
+      const [status, id] = params;
+      const u = galleryUploads.get(id);
+      if (u) {
+        u.status = status;
+        return { meta: { changes: 1 } };
+      }
+      return { meta: { changes: 0 } };
+    }
+
+    if (s.startsWith("UPDATE gallery_uploads SET status = 'finalizing' WHERE id = ?")) {
+      const [id, now] = params;
+      const u = galleryUploads.get(id);
+      const changed = Boolean(u && (u.status === "prepared" || u.status === "uploading") && u.expires_at > now);
+      if (changed) u!.status = "finalizing";
+      return { meta: { changes: changed ? 1 : 0 } };
+    }
+
+    if (s.startsWith("DELETE FROM gallery_uploads WHERE id = ?")) {
+      const [id] = params;
+      const had = galleryUploads.delete(id);
+      return { meta: { changes: had ? 1 : 0 } };
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_uploads WHERE expires_at <=")) {
+      const [now, limit] = params;
+      const list = Array.from(galleryUploads.values())
+        .filter((u) => u.expires_at <= now)
+        .slice(0, limit || 20);
+      return { results: list };
+    }
+
+    // Gallery Albums
+    if (s.startsWith("INSERT INTO gallery_albums")) {
+      const [id, name, slug, cover_image_id, created_at, updated_at] = params;
+      galleryAlbums.set(id, { id, name, slug, cover_image_id: cover_image_id ?? null, created_at, updated_at });
+      return { meta: { changes: 1 } };
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_albums WHERE id = ?")) {
+      const [id] = params;
+      return galleryAlbums.get(id) || null;
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_albums WHERE slug = ?")) {
+      const [slug] = params;
+      for (const a of galleryAlbums.values()) {
+        if (a.slug === slug) return a;
+      }
+      return null;
+    }
+
+    if (s.startsWith("SELECT * FROM gallery_albums")) {
+      return { results: Array.from(galleryAlbums.values()).sort((a, b) => b.updated_at - a.updated_at) };
+    }
+
+    if (s.startsWith("DELETE FROM gallery_albums WHERE id = ?")) {
+      const [id] = params;
+      const had = galleryAlbums.delete(id);
+      return { meta: { changes: had ? 1 : 0 } };
     }
 
     if (s.startsWith("SELECT * FROM gallery_images WHERE id = ?")) {
@@ -723,7 +837,7 @@ export function createMockD1(): D1Database {
     }
 
     if (s.startsWith("SELECT COUNT(*) AS count FROM sqlite_master")) {
-      return { count: 8 };
+      return { count: 10 };
     }
 
     // Fallback
@@ -765,15 +879,17 @@ export function createMockEnv(overrides: Partial<Env> = {}): Env {
     RETRIEVE_RATE_LIMITER: { limit: async () => ({ success: true }) } as unknown as RateLimit,
     APP_NAME: "之间门",
     UPLOAD_MODE: "token",
+    GALLERY_UPLOAD_MODE: "token",
     ADMIN_PASSWORD: "test-admin-password",
     UPLOAD_TOKEN: "test-upload-token",
+    GALLERY_UPLOAD_TOKEN: "test-gallery-upload-token",
+    GALLERY_ADMIN_TOKEN: "test-gallery-admin-token",
     SHORTCUT_TOKEN: "test-shortcut-token",
     R2_ACCESS_KEY_ID: "mock-access-key",
     R2_SECRET_ACCESS_KEY: "mock-secret-key",
     R2_ACCOUNT_ID: "mock-account-id",
     R2_BUCKET_NAME: "pocket-relay-files",
     GALLERY_BUCKET_NAME: "pocket-relay-gallery",
-    GALLERY_ADMIN_TOKEN: "test-gallery-admin-token",
     ...overrides
   };
 }

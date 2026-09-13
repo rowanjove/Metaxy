@@ -12,7 +12,7 @@ describe("Validation helpers", () => {
   it("validates expiry ranges", () => {
     expect(isValidExpirySeconds(86400, 604800)).toBe(true);
     expect(isValidExpirySeconds(600, 604800)).toBe(true);
-    expect(isValidExpirySeconds(0, 604800)).toBe(false);
+    expect(isValidExpirySeconds(0, 604800)).toBe(true); // 0 indicates permanent expiry
     expect(isValidExpirySeconds(-100, 604800)).toBe(false);
     expect(isValidExpirySeconds(700000, 604800)).toBe(false);
     expect(isValidExpirySeconds("86400" as any, 604800)).toBe(false);

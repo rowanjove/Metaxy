@@ -187,7 +187,7 @@
 /* Composer Controls Row */
 .composer-controls {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   align-items: end;
 }
@@ -222,7 +222,6 @@
   font-size: 24px;
   letter-spacing: 0.25em;
   text-align: center;
-  text-transform: uppercase;
   height: 52px;
 }
 
@@ -449,4 +448,40 @@
   background-color: var(--warning-subtle);
   color: var(--warning);
   border: 1px solid var(--warning);
+}
+
+/* Password Input with Eye Toggle */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 42px !important;
+}
+
+.password-eye-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease, background-color 0.15s ease;
+  line-height: 1;
+}
+
+.password-eye-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
 }

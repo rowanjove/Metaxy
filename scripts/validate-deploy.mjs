@@ -5,6 +5,7 @@ const failures = [];
 const wrangler = readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8");
 const cors = readFileSync(new URL("../cors.json", import.meta.url), "utf8");
 const driveCors = readFileSync(new URL("../drive-cors.json", import.meta.url), "utf8");
+const galleryCors = readFileSync(new URL("../gallery-cors.json", import.meta.url), "utf8");
 
 if (/00000000-0000-0000-0000-000000000000/.test(wrangler)) {
   failures.push("wrangler.jsonc still contains the placeholder D1 database_id");
@@ -14,6 +15,9 @@ if (/https:\/\/drop\.example\.com/i.test(cors)) {
 }
 if (/https:\/\/drop\.example\.com/i.test(driveCors)) {
   failures.push("drive-cors.json still contains the example production origin");
+}
+if (/https:\/\/drop\.example\.com/i.test(galleryCors)) {
+  failures.push("gallery-cors.json still contains the example production origin");
 }
 if (!/\"binding\"\s*:\s*\"DRIVE\"/.test(wrangler)) {
   failures.push("wrangler.jsonc is missing the DRIVE R2 binding");

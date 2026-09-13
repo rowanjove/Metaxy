@@ -9,6 +9,7 @@ import "./styles/gallery.css";
 import { t, getLocale, setLocale, onLocaleChange } from "./i18n";
 import { getTheme, setTheme, applyThemeToDom, onThemeChange } from "./state";
 import { router } from "./router";
+import { api } from "./api";
 import { createHomePage } from "./pages/home";
 import { createDropPage } from "./pages/drop";
 import { createAdminLoginPage } from "./pages/admin-login";
@@ -96,30 +97,9 @@ function renderApp() {
     updateThemeButton();
   });
 
-  // Gallery Link
-  const galleryBtn = document.createElement("a");
-  galleryBtn.href = "/gallery";
-  galleryBtn.className = "header-btn";
-  galleryBtn.textContent = t("gallery.nav");
-  galleryBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    router.navigate("/gallery");
-  });
-
-  // Drive Link
-  const driveBtn = document.createElement("a");
-  driveBtn.href = "/drive";
-  driveBtn.className = "header-btn";
-  driveBtn.textContent = t("drive.nav");
-  driveBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    router.navigate("/drive");
-  });
-
+  // Public header only contains locale and theme buttons
   actions.appendChild(localeBtn);
   actions.appendChild(themeBtn);
-  actions.appendChild(galleryBtn);
-  actions.appendChild(driveBtn);
 
   headerInner.appendChild(brandLink);
   headerInner.appendChild(actions);
@@ -136,14 +116,32 @@ function renderApp() {
   router.setOutlet(main);
 }
 
-// Register Routes
+async function guardAdminRoute(renderPage: () => HTMLElement | Promise<HTMLElement>): Promise<HTMLElement> {
+  try {
+    const meta = await api.getMeta();
+    if (meta.adminDomain) {
+      const currentHost = window.location.hostname.toLowerCase();
+      const targetHost = meta.adminDomain.toLowerCase().split(":")[0];
+      if (currentHost !== targetHost) {
+        router.navigate("/");
+        return document.createElement("div");
+      }
+    }
+  } catch {
+    // Continue if meta fetch fails
+  }
+  return renderPage();
+}
+
+// Drive and Gallery are admin surfaces; direct navigation still passes through
+// the same domain guard before the page can issue management API requests.
 router
   .addRoute("/", () => createHomePage())
   .addRoute("/d/:code", (params) => createDropPage(params))
-  .addRoute("/admin/login", () => createAdminLoginPage())
-  .addRoute("/drive", () => createDrivePage())
-  .addRoute("/gallery", () => createGalleryPage())
-  .addRoute("/admin", () => createAdminPage());
+  .addRoute("/admin/login", () => guardAdminRoute(() => createAdminLoginPage()))
+  .addRoute("/admin", () => guardAdminRoute(() => createAdminPage()))
+  .addRoute("/drive", () => guardAdminRoute(() => createDrivePage()))
+  .addRoute("/gallery", () => guardAdminRoute(() => createGalleryPage()));
 
 // Re-render whole UI when locale changes
 onLocaleChange(() => {

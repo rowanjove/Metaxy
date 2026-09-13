@@ -4,9 +4,15 @@ export interface GalleryImageRow {
   filename: string;
   content_type: string;
   size_bytes: number;
+  original_size_bytes?: number | null;
+  thumb_object_key?: string | null;
   width: number | null;
   height: number | null;
   hash: string | null;
+  favorite?: number;
+  album_id?: string | null;
+  dominant_color?: string | null;
+  metadata_json?: string | null;
   created_at: number;
   view_count: number;
   last_viewed_at: number | null;
@@ -30,8 +36,10 @@ export async function insertGalleryImage(
     .prepare(
       `INSERT INTO gallery_images (
         id, object_key, filename, content_type, size_bytes,
-        width, height, hash, created_at, view_count, last_viewed_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        original_size_bytes, thumb_object_key, width, height, hash,
+        favorite, album_id, dominant_color, metadata_json,
+        created_at, view_count, last_viewed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .bind(
       image.id,
@@ -39,9 +47,15 @@ export async function insertGalleryImage(
       image.filename,
       image.content_type,
       image.size_bytes,
-      image.width,
-      image.height,
-      image.hash,
+      image.original_size_bytes ?? null,
+      image.thumb_object_key ?? null,
+      image.width ?? null,
+      image.height ?? null,
+      image.hash ?? null,
+      image.favorite ?? 0,
+      image.album_id ?? null,
+      image.dominant_color ?? null,
+      image.metadata_json ?? null,
       image.created_at,
       image.view_count,
       image.last_viewed_at
@@ -82,42 +96,79 @@ export async function incrementGalleryImageView(
     .run();
 }
 
+export interface ListGalleryImagesOptions {
+  limit?: number;
+  cursor?: string;
+  albumId?: string;
+  favorite?: boolean;
+  search?: string;
+}
+
 export async function listGalleryImages(
   db: D1Database,
-  options: { limit?: number; cursor?: string }
+  options: ListGalleryImagesOptions
 ): Promise<{ items: GalleryImageRow[]; nextCursor: string | null; total: number }> {
   const limit = Math.min(Math.max(options.limit ?? 30, 1), 100);
 
+  const conditions: string[] = ["status = 'active'"];
+  const params: any[] = [];
+
+  if (options.albumId !== undefined) {
+    if (options.albumId === "") {
+      conditions.push("album_id IS NULL");
+    } else {
+      conditions.push("album_id = ?");
+      params.push(options.albumId);
+    }
+  }
+
+  if (options.favorite !== undefined) {
+    conditions.push("favorite = ?");
+    params.push(options.favorite ? 1 : 0);
+  }
+
+  if (options.search && options.search.trim()) {
+    conditions.push("(filename LIKE ? OR id LIKE ?)");
+    const pattern = `%${options.search.trim()}%`;
+    params.push(pattern, pattern);
+  }
+
+  const whereClause = conditions.join(" AND ");
+
   const totalRow = await db
-    .prepare("SELECT COUNT(*) as count FROM gallery_images WHERE status = 'active'")
+    .prepare(`SELECT COUNT(*) as count FROM gallery_images WHERE ${whereClause}`)
+    .bind(...params)
     .first<{ count: number }>();
   const total = totalRow?.count ?? 0;
-
-  let query: string;
-  let items: GalleryImageRow[];
 
   const parsedCursor = options.cursor ? decodeGalleryCursor(options.cursor) : null;
   if (options.cursor && !parsedCursor) {
     return { items: [], nextCursor: null, total };
   }
 
+  let items: GalleryImageRow[];
   if (parsedCursor) {
+    const cursorConditions = [...conditions, "(created_at < ? OR (created_at = ? AND id < ?))"];
+    const cursorParams = [...params, parsedCursor.createdAt, parsedCursor.createdAt, parsedCursor.id, limit + 1];
     items = (
       await db
         .prepare(
           `SELECT * FROM gallery_images
-           WHERE status = 'active'
-             AND (created_at < ? OR (created_at = ? AND id < ?))
+           WHERE ${cursorConditions.join(" AND ")}
            ORDER BY created_at DESC, id DESC LIMIT ?`
         )
-        .bind(parsedCursor.createdAt, parsedCursor.createdAt, parsedCursor.id, limit + 1)
+        .bind(...cursorParams)
         .all<GalleryImageRow>()
     ).results;
   } else {
     items = (
       await db
-        .prepare("SELECT * FROM gallery_images WHERE status = 'active' ORDER BY created_at DESC, id DESC LIMIT ?")
-        .bind(limit + 1)
+        .prepare(
+          `SELECT * FROM gallery_images
+           WHERE ${whereClause}
+           ORDER BY created_at DESC, id DESC LIMIT ?`
+        )
+        .bind(...params, limit + 1)
         .all<GalleryImageRow>()
     ).results;
   }
@@ -130,6 +181,30 @@ export async function listGalleryImages(
   }
 
   return { items, nextCursor, total };
+}
+
+export async function setGalleryImageFavorite(
+  db: D1Database,
+  id: string,
+  favorite: boolean
+): Promise<boolean> {
+  const res = await db
+    .prepare("UPDATE gallery_images SET favorite = ? WHERE id = ? AND status = 'active'")
+    .bind(favorite ? 1 : 0, id)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
+}
+
+export async function setGalleryImageAlbum(
+  db: D1Database,
+  id: string,
+  albumId: string | null
+): Promise<boolean> {
+  const res = await db
+    .prepare("UPDATE gallery_images SET album_id = ? WHERE id = ? AND status = 'active'")
+    .bind(albumId, id)
+    .run();
+  return (res.meta?.changes ?? 0) > 0;
 }
 
 export async function deleteGalleryImage(
@@ -163,6 +238,10 @@ function decodeGalleryCursor(cursor: string): { createdAt: number; id: string } 
   }
 }
 
+export function isValidGalleryCursor(cursor: string): boolean {
+  return Boolean(decodeGalleryCursor(cursor));
+}
+
 export async function markGalleryImageDeleting(
   db: D1Database,
   id: string,
@@ -174,14 +253,26 @@ export async function markGalleryImageDeleting(
   }
   if (image.status === "deleting") return image;
 
-  await db.batch([
+  const stmts = [
     db.prepare("UPDATE gallery_images SET status = 'deleting' WHERE id = ? AND status = 'active'").bind(id),
     db.prepare(
       `INSERT INTO gallery_object_deletions (object_key, image_id, created_at, not_before)
        VALUES (?, ?, ?, ?)
        ON CONFLICT(object_key) DO UPDATE SET image_id = excluded.image_id`
     ).bind(image.object_key, image.id, now, now)
-  ]);
+  ];
+
+  if (image.thumb_object_key) {
+    stmts.push(
+      db.prepare(
+        `INSERT INTO gallery_object_deletions (object_key, image_id, created_at, not_before)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(object_key) DO UPDATE SET image_id = excluded.image_id`
+      ).bind(image.thumb_object_key, image.id, now, now)
+    );
+  }
+
+  await db.batch(stmts);
   return { ...image, status: "deleting" };
 }
 
@@ -208,12 +299,17 @@ export async function removeGalleryObjectDeletion(db: D1Database, objectKey: str
 export async function finalizeGalleryImageDeletion(
   db: D1Database,
   id: string,
-  objectKey: string
+  objectKey: string,
+  thumbKey?: string | null
 ): Promise<void> {
-  await db.batch([
+  const stmts = [
     db.prepare("DELETE FROM gallery_images WHERE id = ? AND object_key = ?").bind(id, objectKey),
     db.prepare("DELETE FROM gallery_object_deletions WHERE object_key = ?").bind(objectKey)
-  ]);
+  ];
+  if (thumbKey) {
+    stmts.push(db.prepare("DELETE FROM gallery_object_deletions WHERE object_key = ?").bind(thumbKey));
+  }
+  await db.batch(stmts);
 }
 
 export async function listGalleryObjectDeletions(
@@ -235,8 +331,8 @@ export async function finalizeGalleryObjectDeletion(
   item: GalleryObjectDeletionRow
 ): Promise<void> {
   const imageDelete = item.image_id
-    ? db.prepare("DELETE FROM gallery_images WHERE id = ? AND object_key = ?").bind(item.image_id, item.object_key)
-    : db.prepare("DELETE FROM gallery_images WHERE object_key = ?").bind(item.object_key);
+    ? db.prepare("DELETE FROM gallery_images WHERE id = ? AND (object_key = ? OR thumb_object_key = ?)").bind(item.image_id, item.object_key, item.object_key)
+    : db.prepare("DELETE FROM gallery_images WHERE object_key = ? OR thumb_object_key = ?").bind(item.object_key, item.object_key);
   await db.batch([
     imageDelete,
     db.prepare("DELETE FROM gallery_object_deletions WHERE object_key = ?").bind(item.object_key)

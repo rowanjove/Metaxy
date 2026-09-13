@@ -34,11 +34,16 @@ dropsRoutes.post("/drops", async (c, next) => {
     expiresInSeconds:
       isRecord(rawBody) && typeof rawBody.expiresInSeconds === "number"
         ? rawBody.expiresInSeconds
+        : undefined,
+    customCode:
+      isRecord(rawBody) && typeof rawBody.customCode === "string" && rawBody.customCode.trim()
+        ? rawBody.customCode.trim()
         : undefined
   };
 
   const result = await createDraft(c.env, {
-    expiresInSeconds: body.expiresInSeconds
+    expiresInSeconds: body.expiresInSeconds,
+    customCode: body.customCode
   });
 
   return jsonSuccess(c, result, 201);

@@ -8,6 +8,7 @@ import { jsonSuccess } from "../lib/responses";
 import { checkRateLimit, getClientIp } from "../middleware/rate-limit";
 import { adminSessionMiddleware } from "../middleware/admin-session";
 import { adminCsrfMiddleware } from "../middleware/csrf";
+import { adminDomainMiddleware } from "../middleware/admin-domain";
 import {
   loginAdmin,
   logoutAdminSession,
@@ -42,6 +43,8 @@ import type {
 import { isRecord, parseJsonBody } from "../lib/body";
 
 export const adminRoutes = new Hono<WorkerContext>();
+
+adminRoutes.use("*", adminDomainMiddleware);
 
 // Admin Login
 adminRoutes.post("/admin/login", async (c) => {

@@ -1,6 +1,7 @@
 import { t } from "../i18n";
 import { api } from "../api";
 import { router } from "../router";
+import { createPasswordInputWithEye } from "../components/eye-input";
 
 export function createAdminLoginPage(): HTMLElement {
   const container = document.createElement("div");
@@ -22,13 +23,14 @@ export function createAdminLoginPage(): HTMLElement {
   label.className = "form-label";
   label.textContent = t("admin.passwordLabel");
 
-  const input = document.createElement("input");
-  input.type = "password";
-  input.placeholder = t("admin.passwordPlaceholder");
-  input.required = true;
+  const { wrapper, input } = createPasswordInputWithEye({
+    placeholder: t("admin.passwordPlaceholder"),
+    required: true,
+    autocomplete: "current-password"
+  });
 
   group.appendChild(label);
-  group.appendChild(input);
+  group.appendChild(wrapper);
 
   const errorBanner = document.createElement("div");
   errorBanner.className = "notice-box is-error";
@@ -47,20 +49,34 @@ export function createAdminLoginPage(): HTMLElement {
   card.appendChild(form);
   container.appendChild(card);
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  async function doLogin(key: string) {
     errorBanner.style.display = "none";
     submitBtn.disabled = true;
 
     try {
-      await api.adminLogin(input.value);
+      await api.adminLogin(key);
       router.navigate("/admin");
     } catch (err: any) {
       errorBanner.textContent = err.message || t("errors.INVALID_CREDENTIALS");
       errorBanner.style.display = "flex";
       submitBtn.disabled = false;
     }
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    void doLogin(input.value);
   });
+
+  // Support ?key=... or ?token=... query parameter for fast login
+  const urlParams = new URLSearchParams(window.location.search);
+  const keyParam = urlParams.get("key") || urlParams.get("token");
+  if (keyParam) {
+    input.value = keyParam;
+    setTimeout(() => {
+      void doLogin(keyParam);
+    }, 100);
+  }
 
   return container;
 }

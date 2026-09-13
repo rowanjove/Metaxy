@@ -24,7 +24,10 @@ export const DEFAULT_LIMITS = {
   MAX_FILENAME_LENGTH: 255
 } as const;
 
-export const CODE_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+export const CODE_CHARSET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+export const PERMANENT_EXPIRY_SECONDS = 0;
+export const PERMANENT_EXPIRY_TIMESTAMP = 253402300799000; // 9999-12-31T23:59:59.000Z
 
 export const EXPIRY_OPTIONS = [
   600, // 10 minutes
@@ -32,7 +35,8 @@ export const EXPIRY_OPTIONS = [
   21600, // 6 hours
   86400, // 24 hours
   259200, // 3 days
-  604800 // 7 days
+  604800, // 7 days
+  0 // Permanent
 ] as const;
 
 export const INLINE_IMAGE_MIME_TYPES = new Set([

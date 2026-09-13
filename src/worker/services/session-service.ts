@@ -16,16 +16,16 @@ export async function loginAdmin(
   env: Env,
   password: string
 ): Promise<{ token: string; expiresAt: number }> {
-  const adminPassword = env.ADMIN_PASSWORD?.trim();
-  if (!adminPassword) {
+  const adminSecret = (env.ADMIN_KEY || env.ADMIN_PASSWORD)?.trim();
+  if (!adminSecret) {
     throw new AppError(
       503,
       ERROR_CODES.SERVICE_UNAVAILABLE,
-      "ADMIN_PASSWORD secret is not configured on this server."
+      "ADMIN_KEY / ADMIN_PASSWORD secret is not configured on this server."
     );
   }
 
-  const match = await timingSafeEqual(password || "", adminPassword);
+  const match = await timingSafeEqual(password || "", adminSecret);
   if (!match) {
     throw new AppError(401, ERROR_CODES.INVALID_CREDENTIALS, "Invalid admin password.");
   }

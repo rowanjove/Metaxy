@@ -1,6 +1,7 @@
 import { t, formatBytes } from "../i18n";
 import { api, ApiClientError } from "../api";
 import { getSavedUploadToken, saveUploadToken } from "../state";
+import { createPasswordInputWithEye } from "./eye-input";
 import type { CommitDropData, MetaData } from "../../shared/contracts";
 
 export interface PendingFile {
@@ -256,7 +257,8 @@ export function createComposer(
     21600: t("home.expiryUnits.6h"),
     86400: t("home.expiryUnits.24h"),
     259200: t("home.expiryUnits.3d"),
-    604800: t("home.expiryUnits.7d")
+    604800: t("home.expiryUnits.7d"),
+    0: t("home.expiryUnits.permanent")
   };
 
   for (const opt of meta.expiryOptions) {
@@ -271,6 +273,27 @@ export function createComposer(
   expiryGroup.appendChild(expirySelect);
   controlsRow.appendChild(expiryGroup);
 
+  // Custom retrieval code / Upload password (上传口令) with eye toggle
+  const codeGroup = document.createElement("div");
+  codeGroup.className = "form-group";
+
+  const codeLabel = document.createElement("label");
+  codeLabel.className = "form-label";
+  codeLabel.textContent = t("home.dropCodeLabel");
+
+  const { wrapper: codeWrapper, input: customCodeInput } = createPasswordInputWithEye({
+    placeholder: t("home.dropCodePlaceholder"),
+    filterAlphanumericOnly: true,
+    maxLength: 32,
+    autocomplete: "off"
+  });
+  customCodeInput.id = `drop-code-${crypto.randomUUID()}`;
+  codeLabel.htmlFor = customCodeInput.id;
+
+  codeGroup.appendChild(codeLabel);
+  codeGroup.appendChild(codeWrapper);
+  controlsRow.appendChild(codeGroup);
+
   // Upload token input if token mode
   let tokenInput: HTMLInputElement | null = null;
   if (meta.uploadMode === "token") {
@@ -281,18 +304,20 @@ export function createComposer(
     tokenLabel.className = "form-label";
     tokenLabel.textContent = t("home.uploadTokenLabel");
 
-    tokenInput = document.createElement("input");
-    tokenInput.type = "password";
+    const { wrapper: tokenWrapper, input: tokenInputField } = createPasswordInputWithEye({
+      placeholder: t("home.uploadTokenPlaceholder"),
+      value: getSavedUploadToken(),
+      autocomplete: "current-password"
+    });
+    tokenInput = tokenInputField;
     tokenInput.id = `upload-token-${crypto.randomUUID()}`;
     tokenLabel.htmlFor = tokenInput.id;
-    tokenInput.placeholder = t("home.uploadTokenPlaceholder");
-    tokenInput.value = getSavedUploadToken();
     tokenInput.addEventListener("input", () => {
       saveUploadToken(tokenInput!.value);
     });
 
     tokenGroup.appendChild(tokenLabel);
-    tokenGroup.appendChild(tokenInput);
+    tokenGroup.appendChild(tokenWrapper);
     controlsRow.appendChild(tokenGroup);
   }
 
@@ -366,7 +391,11 @@ export function createComposer(
 
     try {
       // 1. Create Draft
-      const draft = await api.createDraft(expirySeconds);
+      const customCode = customCodeInput.value.trim() || undefined;
+      const draft = await api.createDraft({
+        expiresInSeconds: expirySeconds,
+        customCode
+      });
       const { dropId, draftToken } = draft;
       activeDraft = { dropId, draftToken };
 

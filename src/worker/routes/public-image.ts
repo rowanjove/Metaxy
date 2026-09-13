@@ -8,9 +8,10 @@ import { buildContentDisposition } from "../lib/filename";
 
 export const publicImageRoutes = new Hono<WorkerContext>();
 
-publicImageRoutes.get("/i/:param{.+}", async (c) => {
+publicImageRoutes.on(["GET", "HEAD"], "/i/:param{.+}", async (c) => {
   const rawParam = c.req.param("param") || "";
-  // Extract id before any dot or slash: e.g. "a1b2c3d4.webp" or "a1b2c3d4/my_image.png" -> "a1b2c3d4"
+  const isThumb = rawParam.includes(".thumb");
+  // Extract id before any dot or slash: e.g. "a1b2c3d4.webp" or "a1b2c3d4.thumb.webp" -> "a1b2c3d4"
   const id = rawParam.split("/")[0].split(".")[0].trim();
 
   if (!id) {
@@ -50,16 +51,17 @@ publicImageRoutes.get("/i/:param{.+}", async (c) => {
     throw new AppError(404, ERROR_CODES.GALLERY_IMAGE_NOT_FOUND, "Image not found.");
   }
 
-  const clientEtag = c.req.header("if-none-match");
-
   if (!c.env.GALLERY) {
     throw new AppError(503, ERROR_CODES.SERVICE_UNAVAILABLE, "Gallery storage is not configured on this server.");
   }
-  const object = await c.env.GALLERY.get(image.object_key);
+
+  const targetObjectKey = (isThumb && image.thumb_object_key) ? image.thumb_object_key : image.object_key;
+  const object = await c.env.GALLERY.get(targetObjectKey);
   if (!object) {
     throw new AppError(404, ERROR_CODES.FILE_OBJECT_MISSING, "Image object missing in storage.");
   }
 
+  const clientEtag = c.req.header("if-none-match");
   // Check cache match (304 Not Modified)
   if (clientEtag && object.httpEtag && (clientEtag === object.httpEtag || clientEtag === `"${object.httpEtag}"`)) {
     return new Response(null, {
@@ -71,8 +73,10 @@ publicImageRoutes.get("/i/:param{.+}", async (c) => {
     });
   }
 
-  // Async update view count
-  c.executionCtx.waitUntil(incrementGalleryImageView(c.env.DB, image.id, Date.now()));
+  // Async update view count only on full GET requests
+  if (c.req.method === "GET" && !isThumb && c.executionCtx) {
+    c.executionCtx.waitUntil(incrementGalleryImageView(c.env.DB, image.id, Date.now()));
+  }
 
   const isInline = isInlinePreviewableImage(image.content_type);
   const contentDisposition = buildContentDisposition(image.filename, isInline ? "inline" : "attachment");
@@ -80,7 +84,8 @@ publicImageRoutes.get("/i/:param{.+}", async (c) => {
   const headers = new Headers();
   object.writeHttpMetadata(headers);
 
-  headers.set("Content-Type", image.content_type || "image/jpeg");
+  const contentType = (isThumb && image.thumb_object_key) ? "image/webp" : (image.content_type || "image/jpeg");
+  headers.set("Content-Type", contentType);
   headers.set("Content-Disposition", contentDisposition);
   headers.set("Cache-Control", "public, max-age=31536000, immutable");
   headers.set("X-Content-Type-Options", "nosniff");
@@ -88,6 +93,10 @@ publicImageRoutes.get("/i/:param{.+}", async (c) => {
 
   if (object.httpEtag) {
     headers.set("ETag", object.httpEtag);
+  }
+
+  if (c.req.method === "HEAD") {
+    return new Response(null, { status: 200, headers });
   }
 
   return new Response(object.body, {

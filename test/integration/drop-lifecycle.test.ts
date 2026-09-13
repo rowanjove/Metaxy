@@ -215,4 +215,33 @@ describe("Drop lifecycle and storage tiering", () => {
       reason: expect.objectContaining({ code: "TOTAL_FILE_SIZE_EXCEEDED" })
     });
   });
+  it("supports custom case-sensitive retrieval code and permanent expiry", async () => {
+    const draft = await createDraft(env, {
+      expiresInSeconds: 0,
+      customCode: "SecretDrop2026"
+    });
+    expect(draft.dropId).toBeDefined();
+
+    await updateText(env, draft.dropId, draft.draftToken, "Permanent case sensitive drop");
+    const commit = await commitDrop(env, draft.dropId, draft.draftToken, "http://localhost:5173");
+    expect(commit.code).toBe("SecretDrop2026");
+
+    // Exact case retrieve succeeds
+    const detail = await getDropDetail(env, "SecretDrop2026");
+    expect(detail.code).toBe("SecretDrop2026");
+    expect(detail.expiresAt).toBe(253402300799000);
+    expect(detail.remainingSeconds).toBe(-1);
+
+    // Different case fails
+    await expect(getDropDetail(env, "secretdrop2026")).rejects.toThrow("The requested drop was not found.");
+  });
+
+  it("rejects duplicate custom code", async () => {
+    const draft1 = await createDraft(env, { customCode: "UniqueCode1" });
+    await updateText(env, draft1.dropId, draft1.draftToken, "Drop 1");
+    await commitDrop(env, draft1.dropId, draft1.draftToken, "http://localhost:5173");
+
+    await expect(createDraft(env, { customCode: "UniqueCode1" }))
+      .rejects.toThrow("该口令已被使用，请更换其他口令。");
+  });
 });

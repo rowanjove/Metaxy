@@ -11,7 +11,8 @@ export function getUtf8ByteLength(text: string): number {
 }
 
 /**
- * Validate that an expiry time in seconds is within acceptable range
+ * Validate that an expiry time in seconds is within acceptable range.
+ * 0 indicates permanent validity.
  */
 export function isValidExpirySeconds(
   seconds: unknown,
@@ -20,5 +21,5 @@ export function isValidExpirySeconds(
   if (typeof seconds !== "number" || !Number.isInteger(seconds)) {
     return false;
   }
-  return seconds > 0 && seconds <= maxSeconds;
+  return seconds === 0 || (seconds > 0 && seconds <= maxSeconds);
 }

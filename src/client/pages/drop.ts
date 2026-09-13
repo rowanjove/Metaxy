@@ -3,9 +3,10 @@ import { api } from "../api";
 import { router } from "../router";
 import { showImageLightbox } from "../components/dialog";
 import type { DropDetailData, FileItemDetail } from "../../shared/contracts";
+import { PERMANENT_EXPIRY_TIMESTAMP } from "../../shared/constants";
 
 export async function createDropPage(params: { code?: string }): Promise<HTMLElement> {
-  const code = params.code?.toUpperCase().replace(/[\s-]+/g, "") || "";
+  const code = params.code?.replace(/[\s-]+/g, "") || "";
   const container = document.createElement("div");
   container.className = "detail-view";
 
@@ -34,8 +35,29 @@ export async function createDropPage(params: { code?: string }): Promise<HTMLEle
   const timerBadge = document.createElement("div");
   timerBadge.className = "detail-expiry-badge";
 
-  let remainingSecs = Math.max(0, Math.floor((detail.expiresAt - Date.now()) / 1000));
-  timerBadge.textContent = t("detail.expiresIn", { time: formatRemainingTime(remainingSecs) });
+  const isPermanent = detail.expiresAt >= PERMANENT_EXPIRY_TIMESTAMP || detail.remainingSeconds < 0;
+
+  if (isPermanent) {
+    timerBadge.textContent = t("result.permanentExpiry");
+  } else {
+    let remainingSecs = Math.max(0, Math.floor((detail.expiresAt - Date.now()) / 1000));
+    timerBadge.textContent = t("detail.expiresIn", { time: formatRemainingTime(remainingSecs) });
+
+    // Countdown timer tick (clears content on zero)
+    const timerInterval = setInterval(() => {
+      if (!container.isConnected) {
+        clearInterval(timerInterval);
+        return;
+      }
+      remainingSecs = Math.max(0, Math.floor((detail.expiresAt - Date.now()) / 1000));
+      timerBadge.textContent = t("detail.expiresIn", { time: formatRemainingTime(remainingSecs) });
+
+      if (remainingSecs <= 0) {
+        clearInterval(timerInterval);
+        contentWrapper.replaceChildren(renderExpiredState());
+      }
+    }, 1000);
+  }
 
   headerCard.appendChild(codeBadge);
   headerCard.appendChild(timerBadge);
@@ -47,21 +69,6 @@ export async function createDropPage(params: { code?: string }): Promise<HTMLEle
   contentWrapper.style.flexDirection = "column";
   contentWrapper.style.gap = "16px";
   container.appendChild(contentWrapper);
-
-  // Countdown timer tick (clears content on zero)
-  const timerInterval = setInterval(() => {
-    if (!container.isConnected) {
-      clearInterval(timerInterval);
-      return;
-    }
-    remainingSecs = Math.max(0, Math.floor((detail.expiresAt - Date.now()) / 1000));
-    timerBadge.textContent = t("detail.expiresIn", { time: formatRemainingTime(remainingSecs) });
-
-    if (remainingSecs <= 0) {
-      clearInterval(timerInterval);
-      contentWrapper.replaceChildren(renderExpiredState());
-    }
-  }, 1000);
 
   // Render Items
   const fileItems: FileItemDetail[] = [];

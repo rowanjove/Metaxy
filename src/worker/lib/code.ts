@@ -23,10 +23,10 @@ export function generateCode(length: number = DEFAULT_LIMITS.DEFAULT_CODE_LENGTH
 /**
  * Normalize user input code:
  * 1. Unicode trim
- * 2. Convert to uppercase
- * 3. Remove ASCII spaces and hyphens
- * 4. Verify all characters belong to the charset
- * 5. Verify length if expectedLength is provided
+ * 2. Remove ASCII spaces and hyphens
+ * 3. Preserve case (case-sensitive)
+ * 4. Verify length (4 to 32 characters or expectedLength)
+ * 5. Verify all characters are in CODE_CHARSET (alphanumeric)
  */
 export function normalizeCode(raw: unknown, expectedLength?: number): string | null {
   if (typeof raw !== "string") {
@@ -35,7 +35,6 @@ export function normalizeCode(raw: unknown, expectedLength?: number): string | n
 
   const cleaned = raw
     .trim()
-    .toUpperCase()
     .replace(/[\s-]+/g, "");
 
   if (!cleaned) {
@@ -47,14 +46,12 @@ export function normalizeCode(raw: unknown, expectedLength?: number): string | n
     return null;
   }
 
-  if (
-    cleaned.length < DEFAULT_LIMITS.CODE_MIN_LENGTH ||
-    cleaned.length > DEFAULT_LIMITS.CODE_MAX_LENGTH
-  ) {
+  // Support 4 to 32 characters
+  if (cleaned.length < 4 || cleaned.length > 32) {
     return null;
   }
 
-  // Verify all characters are in CODE_CHARSET
+  // Verify all characters are alphanumeric (in CODE_CHARSET)
   for (let i = 0; i < cleaned.length; i++) {
     if (!CODE_CHARSET.includes(cleaned[i])) {
       return null;

@@ -18,6 +18,8 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": [
+      "/admin",
+      "/admin/*",
       "/api/*",
       "/d/*",
       "/i/*",
@@ -80,7 +82,8 @@
 
   "vars": {
     "APP_NAME": "之间门",
-    "UPLOAD_MODE": "token",
+    "UPLOAD_MODE": "public",
+    "ADMIN_DOMAIN": "",
     "MAX_FILE_BYTES_HARD": "52428800",
     "MAX_DROP_FILE_BYTES_HARD": "524288000",
     "MAX_TEXT_BYTES_HARD": "5242880",
@@ -90,6 +93,8 @@
     "DRIVE_ENABLED": "true",
     "DRIVE_BUCKET_NAME": "pocket-relay-drive",
     "GALLERY_BUCKET_NAME": "pocket-relay-gallery",
+    "GALLERY_UPLOAD_MODE": "private",
+    "PUBLIC_IMAGE_BASE_URL": "",
     "DAV_USERNAME": "admin",
     "DRIVE_MAX_FILE_BYTES_HARD": "52428800",
     "DAV_MAX_FILE_BYTES_HARD": "52428800"

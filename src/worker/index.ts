@@ -13,12 +13,17 @@ import { driveRoutes } from "./routes/drive";
 import { webdavRoutes } from "./routes/webdav";
 import { galleryRoutes } from "./routes/gallery";
 import { publicImageRoutes } from "./routes/public-image";
+import { adminDomainMiddleware } from "./middleware/admin-domain";
 import { runScheduledCleanup } from "./services/cleanup-service";
 
 export const app = new Hono<WorkerContext>();
 
 // Apply security headers to all responses
 app.use("*", securityHeadersMiddleware);
+
+// Protect admin routes from SPA loading if on non-admin domain
+app.use("/admin", adminDomainMiddleware);
+app.use("/admin/*", adminDomainMiddleware);
 
 // Mount public image direct links first
 app.route("/", publicImageRoutes);

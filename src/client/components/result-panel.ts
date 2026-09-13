@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { t, formatDateTime, formatRemainingTime } from "../i18n";
 import type { CommitDropData } from "../../shared/contracts";
+import { PERMANENT_EXPIRY_TIMESTAMP } from "../../shared/constants";
 
 export function createResultPanel(data: CommitDropData, onReset: () => void): HTMLElement {
   const container = document.createElement("section");
@@ -27,11 +28,15 @@ export function createResultPanel(data: CommitDropData, onReset: () => void): HT
 
   const expiryText = document.createElement("div");
   expiryText.className = "result-expiry";
-  const remainingSecs = Math.max(0, Math.floor((data.expiresAt - Date.now()) / 1000));
-  expiryText.textContent = t("result.expiresAt", {
-    time: formatDateTime(data.expiresAt),
-    remaining: formatRemainingTime(remainingSecs)
-  });
+  if (data.expiresAt >= PERMANENT_EXPIRY_TIMESTAMP) {
+    expiryText.textContent = t("result.permanentExpiry");
+  } else {
+    const remainingSecs = Math.max(0, Math.floor((data.expiresAt - Date.now()) / 1000));
+    expiryText.textContent = t("result.expiresAt", {
+      time: formatDateTime(data.expiresAt),
+      remaining: formatRemainingTime(remainingSecs)
+    });
+  }
 
   codeCard.appendChild(codeLabel);
   codeCard.appendChild(codeText);

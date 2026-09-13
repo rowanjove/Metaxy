@@ -112,4 +112,38 @@ describe("Admin authentication and settings management", () => {
       .bind(draft.dropId).first<any>();
     expect(updated.expires_at).toBe(originalExpiry + 3600 * 1000);
   });
+  it("authenticates admin with ADMIN_KEY when configured", async () => {
+    const keyEnv = createMockEnv({ ADMIN_KEY: "my-secret-admin-key" });
+    const { token } = await loginAdmin(keyEnv, "my-secret-admin-key");
+    expect(token).toBeDefined();
+    expect(await validateAdminSession(keyEnv, token)).not.toBeNull();
+  });
+
+  it("restricts admin endpoint to ADMIN_DOMAIN when configured", async () => {
+    const domainEnv = createMockEnv({ ADMIN_DOMAIN: "special-admin.example.com" });
+
+    // Request from normal/public domain fails with 404
+    const publicReq = await app.fetch(
+      new Request("http://drop.rowanjove.top/api/v1/admin/login", {
+        method: "POST",
+        headers: { host: "drop.rowanjove.top", "content-type": "application/json" },
+        body: JSON.stringify({ password: "test-admin-password" })
+      }),
+      domainEnv,
+      {} as ExecutionContext
+    );
+    expect(publicReq.status).toBe(404);
+
+    // Request from special admin domain succeeds
+    const adminReq = await app.fetch(
+      new Request("http://special-admin.example.com/api/v1/admin/login", {
+        method: "POST",
+        headers: { host: "special-admin.example.com", "content-type": "application/json" },
+        body: JSON.stringify({ password: "test-admin-password" })
+      }),
+      domainEnv,
+      {} as ExecutionContext
+    );
+    expect(adminReq.status).toBe(200);
+  });
 });

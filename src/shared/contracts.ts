@@ -28,11 +28,13 @@ export interface MetaData {
   expiryOptions: number[];
   defaultExpirySeconds: number;
   codeLength: number;
+  adminDomain?: string;
 }
 
 // Drops
 export interface CreateDraftRequest {
   expiresInSeconds?: number;
+  customCode?: string;
 }
 
 export interface CreateDraftData {

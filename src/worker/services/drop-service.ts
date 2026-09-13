@@ -1,7 +1,7 @@
 import type { Env } from "../env";
 import { AppError } from "../errors";
 import { ERROR_CODES } from "../../shared/error-codes";
-import { DEFAULT_LIMITS } from "../../shared/constants";
+import { DEFAULT_LIMITS, PERMANENT_EXPIRY_SECONDS, PERMANENT_EXPIRY_TIMESTAMP } from "../../shared/constants";
 import { generateCode, normalizeCode } from "../lib/code";
 import { generateRandomToken, sha256Hex, timingSafeEqual } from "../lib/crypto";
 import { getUtf8ByteLength, isValidExpirySeconds } from "../lib/validation";
@@ -34,31 +34,45 @@ import type {
 
 export async function createDraft(
   env: Env,
-  options: { expiresInSeconds?: number } = {}
+  options: { expiresInSeconds?: number; customCode?: string } = {}
 ): Promise<CreateDraftData> {
   const settings = await getParsedSettings(env.DB, env);
   const now = Date.now();
 
   let expirySeconds = options.expiresInSeconds;
   if (expirySeconds !== undefined && !isValidExpirySeconds(expirySeconds, settings.max_expiry_seconds)) {
-    throw new AppError(400, ERROR_CODES.INVALID_EXPIRY, "Expiry must be a positive whole number within the configured limit.");
+    throw new AppError(400, ERROR_CODES.INVALID_EXPIRY, "Expiry must be a positive whole number within the configured limit, or 0 for permanent.");
   }
-  expirySeconds = Math.min(
-    expirySeconds ?? settings.default_expiry_seconds,
-    settings.max_expiry_seconds
-  );
+  if (expirySeconds === undefined) {
+    expirySeconds = settings.default_expiry_seconds;
+  } else if (expirySeconds !== PERMANENT_EXPIRY_SECONDS) {
+    expirySeconds = Math.min(expirySeconds, settings.max_expiry_seconds);
+  }
 
-  const expiresAt = now + expirySeconds * 1000;
+  const expiresAt =
+    expirySeconds === PERMANENT_EXPIRY_SECONDS
+      ? PERMANENT_EXPIRY_TIMESTAMP
+      : now + expirySeconds * 1000;
+
   const dropId = crypto.randomUUID();
   const draftToken = generateRandomToken(32);
   const draftTokenHash = await sha256Hex(draftToken);
 
-  // Try generating unique code with up to 10 retries
   let allocatedCode = "";
   let success = false;
 
-  for (let attempt = 0; attempt < 10; attempt++) {
-    allocatedCode = generateCode(settings.code_length);
+  if (options.customCode) {
+    const normalized = normalizeCode(options.customCode);
+    if (!normalized) {
+      throw new AppError(400, ERROR_CODES.BAD_REQUEST, "口令仅支持英文和数字，区分大小写，长度为 4~32 位。");
+    }
+
+    const existing = await getDropByCode(env.DB, normalized);
+    if (existing && existing.status !== "revoked" && (existing.expires_at >= PERMANENT_EXPIRY_TIMESTAMP || existing.expires_at > now)) {
+      throw new AppError(409, ERROR_CODES.CONFLICT, "该口令已被使用，请更换其他口令。");
+    }
+
+    allocatedCode = normalized;
     try {
       await createDraftDrop(env.DB, {
         id: dropId,
@@ -68,13 +82,31 @@ export async function createDraft(
         expiresAt
       });
       success = true;
-      break;
     } catch (err: any) {
-      // D1 UNIQUE constraint violation on code
-      if (err?.message?.includes("UNIQUE") || err?.toString()?.includes("UNIQUE")) {
-        continue;
+      if (err && (err.message?.includes("UNIQUE") || String(err).includes("UNIQUE"))) {
+        throw new AppError(409, ERROR_CODES.CONFLICT, "该口令已被使用，请更换其他口令。");
       }
       throw err;
+    }
+  } else {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      allocatedCode = generateCode(settings.code_length);
+      try {
+        await createDraftDrop(env.DB, {
+          id: dropId,
+          code: allocatedCode,
+          draftTokenHash,
+          createdAt: now,
+          expiresAt
+        });
+        success = true;
+        break;
+      } catch (err: any) {
+        if (err && (err.message?.includes("UNIQUE") || String(err).includes("UNIQUE"))) {
+          continue;
+        }
+        throw err;
+      }
     }
   }
 
@@ -367,7 +399,7 @@ export async function getDropDetail(
     }
   }
 
-  const remainingSeconds = Math.max(0, Math.floor((drop.expires_at - now) / 1000));
+  const remainingSeconds = drop.expires_at >= PERMANENT_EXPIRY_TIMESTAMP ? -1 : Math.max(0, Math.floor((drop.expires_at - now) / 1000));
 
   return {
     code: drop.code,

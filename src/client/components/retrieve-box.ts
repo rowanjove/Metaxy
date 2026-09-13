@@ -26,14 +26,13 @@ export function createRetrieveBox(codeLength = 6): HTMLElement {
   const input = document.createElement("input");
   input.type = "text";
   input.className = "retrieve-input";
-  input.maxLength = codeLength;
+  input.maxLength = 32;
   input.placeholder = t("retrieve.inputPlaceholder", { length: codeLength });
   input.autocomplete = "off";
-  input.autocapitalize = "characters";
   input.spellcheck = false;
 
   input.addEventListener("input", () => {
-    input.value = input.value.toUpperCase().replace(/[\s-]+/g, "");
+    input.value = input.value.replace(/[^a-zA-Z0-9]/g, "");
   });
 
   const submitBtn = document.createElement("button");
@@ -54,9 +53,9 @@ export function createRetrieveBox(codeLength = 6): HTMLElement {
     e.preventDefault();
     errorBanner.style.display = "none";
 
-    const code = input.value.trim().toUpperCase();
-    if (!code || code.length !== codeLength) {
-      errorBanner.textContent = t("retrieve.invalidCode", { length: codeLength });
+    const code = input.value.trim();
+    if (!code || code.length < 4 || code.length > 32) {
+      errorBanner.textContent = t("retrieve.invalidCode");
       errorBanner.style.display = "flex";
       return;
     }

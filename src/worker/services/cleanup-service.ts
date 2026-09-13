@@ -32,6 +32,10 @@ import {
   finalizeGalleryObjectDeletion,
   listGalleryObjectDeletions
 } from "../repositories/gallery";
+import {
+  listExpiredGalleryUploads,
+  deleteGalleryUpload
+} from "../repositories/gallery-uploads";
 
 // Transitioning candidates is a single D1 batch. Purges stay bounded because
 // each drop may require D1 reads plus one R2 and one D1 deletion.
@@ -49,6 +53,7 @@ export interface CleanupResult {
   cleanedDriveUploads?: number;
   cleanedDavLocks?: number;
   processedGalleryObjects?: number;
+  cleanedGalleryUploads?: number;
   durationMs: number;
 }
 
@@ -102,6 +107,7 @@ export async function runScheduledCleanup(env: Env): Promise<CleanupResult> {
     let cleanedDriveUploads = 0;
     let cleanedDavLocks = 0;
     let processedGalleryObjects = 0;
+    let cleanedGalleryUploads = 0;
     if (env.DRIVE && env.DRIVE_ENABLED === "true") {
       cleanedDavLocks = await cleanExpiredDavLocks(env.DB, now, 100);
       const expiredUploads = await listExpiredDriveUploads(env.DB, now, 20);
@@ -173,6 +179,21 @@ export async function runScheduledCleanup(env: Env): Promise<CleanupResult> {
             await incrementGalleryObjectDeletionAttempt(env.DB, item.object_key, now);
           }
         }
+
+        // Clean expired gallery staging uploads
+        const expiredGalleryUploads = await listExpiredGalleryUploads(env.DB, now, 20);
+        for (const up of expiredGalleryUploads) {
+          cleanedGalleryUploads++;
+          try {
+            await env.GALLERY.delete(up.staging_object_key);
+            if (up.thumb_staging_object_key) {
+              await env.GALLERY.delete(up.thumb_staging_object_key);
+            }
+            await deleteGalleryUpload(env.DB, up.id);
+          } catch (error) {
+            console.error(JSON.stringify({ event: "cleanup_gallery_upload_failed", uploadId: up.id, error: String(error) }));
+          }
+        }
       } catch (error) {
         // Keep legacy deployments observable while they are being migrated;
         // /ready remains non-ready until migration 0007 is applied.
@@ -192,7 +213,8 @@ export async function runScheduledCleanup(env: Env): Promise<CleanupResult> {
       processedDriveObjects,
       cleanedDriveUploads,
       cleanedDavLocks,
-      processedGalleryObjects
+      processedGalleryObjects,
+      cleanedGalleryUploads
     }));
 
     return {
@@ -205,6 +227,7 @@ export async function runScheduledCleanup(env: Env): Promise<CleanupResult> {
       cleanedDriveUploads,
       cleanedDavLocks,
       processedGalleryObjects,
+      cleanedGalleryUploads,
       durationMs
     };
   } catch (err) {

@@ -26,6 +26,9 @@ type GeneratedBindings = Omit<
   | "DAV_USERNAME"
   | "DRIVE_MAX_FILE_BYTES_HARD"
   | "DAV_MAX_FILE_BYTES_HARD"
+  | "ADMIN_DOMAIN"
+  | "GALLERY_UPLOAD_MODE"
+  | "PUBLIC_IMAGE_BASE_URL"
 >;
 
 export type Env = GeneratedBindings & {
@@ -53,10 +56,15 @@ export type Env = GeneratedBindings & {
   DAV_RATE_LIMITER?: RateLimit;
 
   ADMIN_PASSWORD?: string;
+  ADMIN_KEY?: string;
+  ADMIN_DOMAIN?: string;
   UPLOAD_TOKEN?: string;
   SHORTCUT_TOKEN?: string;
-  GALLERY_ALLOWED_REFERERS?: string;
+  GALLERY_UPLOAD_MODE?: "private" | "token" | "public" | string;
+  GALLERY_UPLOAD_TOKEN?: string;
   GALLERY_ADMIN_TOKEN?: string;
+  GALLERY_ALLOWED_REFERERS?: string;
+  PUBLIC_IMAGE_BASE_URL?: string;
   R2_ACCESS_KEY_ID?: string;
   R2_SECRET_ACCESS_KEY?: string;
   R2_ACCOUNT_ID?: string;

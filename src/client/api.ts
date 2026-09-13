@@ -12,7 +12,7 @@ import type {
   UpdateSettingsRequest
 } from "../shared/contracts";
 import type { DriveListResult, DriveUploadPrepareResult, DriveUploadCompleteResult, DriveNodeDto } from "../shared/drive-contracts";
-import type { GalleryImageDto, GalleryListResponse } from "../shared/gallery-contracts";
+import type { GalleryImageDto, GalleryListResponse, GalleryBatchRequest, GalleryAlbumDto, GalleryBatchResponse } from "../shared/gallery-contracts";
 import { getSavedUploadToken } from "./state";
 import { t } from "./i18n";
 
@@ -85,11 +85,14 @@ export const api = {
   },
 
   // Drops
-  async createDraft(expiresInSeconds?: number): Promise<CreateDraftData> {
+  async createDraft(options?: number | { expiresInSeconds?: number; customCode?: string }): Promise<CreateDraftData> {
+    const payload = typeof options === "number"
+      ? { expiresInSeconds: options }
+      : options;
     return requestJson<CreateDraftData>("/api/v1/drops", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ expiresInSeconds })
+      body: JSON.stringify(payload || {})
     });
   },
 
@@ -367,16 +370,78 @@ export const api = {
     });
   },
 
-  async listGalleryImages(limit = 30, cursor?: string): Promise<GalleryListResponse> {
+  async listGalleryImages(options: { limit?: number; cursor?: string; album?: string; favorite?: boolean; search?: string } | number = 30, cursor?: string): Promise<GalleryListResponse> {
     const params = new URLSearchParams();
-    if (limit) params.set("limit", String(limit));
-    if (cursor) params.set("cursor", cursor);
+    if (typeof options === "number") {
+      if (options) params.set("limit", String(options));
+      if (cursor) params.set("cursor", cursor);
+    } else {
+      if (options.limit) params.set("limit", String(options.limit));
+      if (options.cursor) params.set("cursor", options.cursor);
+      if (options.album !== undefined) params.set("album", options.album);
+      if (options.favorite !== undefined) params.set("favorite", String(options.favorite));
+      if (options.search) params.set("search", options.search);
+    }
     const query = params.toString() ? `?${params.toString()}` : "";
     return requestJson<GalleryListResponse>(`/api/v1/gallery/images${query}`);
   },
 
+  async getGalleryImage(id: string): Promise<GalleryImageDto> {
+    return requestJson<GalleryImageDto>(`/api/v1/gallery/images/${encodeURIComponent(id)}`);
+  },
+
   async deleteGalleryImage(id: string): Promise<void> {
     await requestJson<void>(`/api/v1/gallery/images/${encodeURIComponent(id)}`, {
+      method: "DELETE"
+    });
+  },
+
+  async batchGalleryImages(req: GalleryBatchRequest): Promise<GalleryBatchResponse> {
+    return requestJson<GalleryBatchResponse>("/api/v1/gallery/images/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req)
+    });
+  },
+
+  async toggleGalleryFavorite(id: string, favorite: boolean): Promise<void> {
+    await requestJson<void>(`/api/v1/gallery/images/${encodeURIComponent(id)}/favorite`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ favorite })
+    });
+  },
+
+  async setGalleryImageAlbum(id: string, albumId: string | null): Promise<void> {
+    await requestJson<void>(`/api/v1/gallery/images/${encodeURIComponent(id)}/album`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ albumId })
+    });
+  },
+
+  async listGalleryAlbums(): Promise<GalleryAlbumDto[]> {
+    return requestJson<GalleryAlbumDto[]>("/api/v1/gallery/albums");
+  },
+
+  async createGalleryAlbum(name: string, slug?: string): Promise<GalleryAlbumDto> {
+    return requestJson<GalleryAlbumDto>("/api/v1/gallery/albums", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, slug })
+    });
+  },
+
+  async updateGalleryAlbum(id: string, data: { name?: string; slug?: string; coverImageId?: string | null }): Promise<void> {
+    await requestJson<void>(`/api/v1/gallery/albums/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteGalleryAlbum(id: string): Promise<void> {
+    await requestJson<void>(`/api/v1/gallery/albums/${encodeURIComponent(id)}`, {
       method: "DELETE"
     });
   }

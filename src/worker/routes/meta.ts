@@ -27,10 +27,10 @@ metaRoutes.get("/ready", async (c) => {
       SELECT COUNT(*) AS count
       FROM sqlite_master
       WHERE type = 'table'
-        AND name IN ('drops', 'files', 'drop_items', 'settings', 'admin_sessions', 'object_deletions', 'gallery_images', 'gallery_object_deletions')
+         AND name IN ('drops', 'files', 'drop_items', 'settings', 'admin_sessions', 'object_deletions', 'gallery_images', 'gallery_object_deletions', 'gallery_uploads', 'gallery_albums')
       `
     ).first<{ count: number }>();
-    if ((schema?.count || 0) !== 8) missing.push("database_schema");
+    if ((schema?.count || 0) !== 10) missing.push("database_schema");
     if (driveRequested) {
       const driveSchema = await c.env.DB.prepare(
         `SELECT COUNT(*) AS count FROM sqlite_master
@@ -48,7 +48,7 @@ metaRoutes.get("/ready", async (c) => {
     console.error(JSON.stringify({ event: "readiness_database_failed", error: String(error) }));
   }
 
-  if (!c.env.ADMIN_PASSWORD?.trim()) missing.push("admin_password");
+  if (!c.env.ADMIN_PASSWORD?.trim() && !c.env.ADMIN_KEY?.trim()) missing.push("admin_password");
   if (!c.env.SHORTCUT_TOKEN?.trim()) missing.push("shortcut_token");
   if (c.env.UPLOAD_MODE !== "public" && !c.env.UPLOAD_TOKEN?.trim()) {
     missing.push("upload_token");
@@ -82,11 +82,13 @@ metaRoutes.get("/ready", async (c) => {
 metaRoutes.get("/meta", async (c) => {
   const settings = await getParsedSettings(c.env.DB, c.env);
   const uploadMode = c.env.UPLOAD_MODE === "public" ? "public" : "token";
-  const expiryOptions: number[] = EXPIRY_OPTIONS.filter((seconds) => seconds <= settings.max_expiry_seconds);
+  const expiryOptions: number[] = EXPIRY_OPTIONS.filter(
+    (seconds) => seconds === 0 || seconds <= settings.max_expiry_seconds
+  );
   if (!expiryOptions.includes(settings.default_expiry_seconds)) {
     expiryOptions.push(settings.default_expiry_seconds);
-    expiryOptions.sort((a, b) => a - b);
   }
+  expiryOptions.sort((a, b) => (a === 0 ? 1 : b === 0 ? -1 : a - b));
 
   const data: MetaData = {
     siteName: settings.site_name,
@@ -99,7 +101,8 @@ metaRoutes.get("/meta", async (c) => {
     },
     expiryOptions,
     defaultExpirySeconds: settings.default_expiry_seconds,
-    codeLength: settings.code_length
+    codeLength: settings.code_length,
+    adminDomain: c.env.ADMIN_DOMAIN?.trim() || undefined
   };
 
   return jsonSuccess(c, data);

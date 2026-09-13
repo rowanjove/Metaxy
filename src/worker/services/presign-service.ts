@@ -13,19 +13,27 @@ export interface PresignedUrlResult {
   expiresAt: number;
 }
 
+export type R2Target = "FILES" | "DRIVE" | "GALLERY";
+
 export async function createPresignedPutUrl(
   env: Env,
   objectKey: string,
   contentType: string,
   ttlSeconds: number = DEFAULT_LIMITS.PRESIGNED_URL_TTL_SECONDS,
-  bucketOverride?: string
+  target: R2Target = "FILES"
 ): Promise<PresignedUrlResult> {
   const accessKeyId = env.R2_ACCESS_KEY_ID?.trim();
   const secretAccessKey = env.R2_SECRET_ACCESS_KEY?.trim();
   const accountId = env.R2_ACCOUNT_ID?.trim();
-  const bucketName = bucketOverride === "DRIVE"
-    ? env.DRIVE_BUCKET_NAME?.trim()
-    : env.R2_BUCKET_NAME?.trim();
+
+  let bucketName: string | undefined;
+  if (target === "GALLERY") {
+    bucketName = env.GALLERY_BUCKET_NAME?.trim() || "pocket-relay-gallery";
+  } else if (target === "DRIVE") {
+    bucketName = env.DRIVE_BUCKET_NAME?.trim();
+  } else {
+    bucketName = env.R2_BUCKET_NAME?.trim();
+  }
 
   if (!accessKeyId || !secretAccessKey || !accountId || !bucketName) {
     throw new AppError(

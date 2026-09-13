@@ -8,6 +8,7 @@ import metaxyBrand from "../../migrations/0004_metaxy_brand.sql?raw";
 import driveCore from "../../migrations/0005_drive_core.sql?raw";
 import driveDav from "../../migrations/0006_drive_dav.sql?raw";
 import galleryCore from "../../migrations/0007_gallery_core.sql?raw";
+import galleryV2 from "../../migrations/0008_gallery_v2.sql?raw";
 import { createDevice } from "../../src/worker/services/device-service";
 import { runScheduledCleanup } from "../../src/worker/services/cleanup-service";
 import { getDriveRoot, findDriveNodeByPath } from "../../src/worker/repositories/drive";
@@ -20,10 +21,12 @@ beforeAll(async () => {
     env.DB.prepare("DROP TABLE IF EXISTS drive_object_deletions"),
     env.DB.prepare("DROP TABLE IF EXISTS drive_uploads"),
     env.DB.prepare("DROP TABLE IF EXISTS drive_nodes"),
+    env.DB.prepare("DROP TABLE IF EXISTS gallery_uploads"),
+    env.DB.prepare("DROP TABLE IF EXISTS gallery_albums"),
     env.DB.prepare("DROP TABLE IF EXISTS gallery_object_deletions"),
     env.DB.prepare("DROP TABLE IF EXISTS gallery_images")
   ]);
-  for (const migration of [v2Schema, cleanupHardening, metaxyBrand, driveCore, driveDav, galleryCore]) {
+  for (const migration of [v2Schema, cleanupHardening, metaxyBrand, driveCore, driveDav, galleryCore, galleryV2]) {
     const statements = migration.split(";").map((sql) => sql.trim()).filter(Boolean);
     await env.DB.batch(statements.map((sql) => env.DB.prepare(sql)));
   }

@@ -51,6 +51,26 @@ Windows 原生兼容性烟测可在管理员 PowerShell 中执行（脚本不会
 .\scripts\windows-dav-smoke.ps1
 ```
 
+## Gallery 2.0 (公共图床与画廊)
+
+Gallery 2.0 为 Metaxy 带来独立的图片托管、公共外链与相册画廊系统：
+
+- **权限隔离**：与 Drop 上传彻底解耦，通过 `GALLERY_UPLOAD_MODE`（`private` / `token` / `public`，默认 `private`）和专属 `GALLERY_UPLOAD_TOKEN`、`GALLERY_ADMIN_TOKEN` 控制访问权限，严禁匿名写库。
+- **R2 直传与安全校验**：支持通过 Presigned PUT 直传到 R2 staging 隔离区，完成时通过 Worker Range 请求校验真实文件魔数（Magic Number），杜绝伪造图片；全量计算 SHA-256 哈希实现秒传去重。
+- **客户端处理流水线**：
+  - 40 MP 内存防护，防止超大分辨率图片导致浏览器崩溃；
+  - Smart WebP 智能体积比对（保留体积较小者，GIF/SVG/AVIF 免损放行）；
+  - 客户端并发自动生成 640px WebP 高质量缩略图。
+- **前端管理系统**：
+  - 多图拖拽、剪贴板多图粘贴（Ctrl+V），带并发控制（1~5）及真实 XHR 进度的上传队列；
+  - 网格与列表双视图，网格列表严格只加载 640px 缩略图（`loading="lazy"`），消除海量首屏卡顿；
+  - 详情抽屉（Detail Drawer）展示分辨率、存储体积与压缩率、主色调、相册归属与多格式快捷复制；
+  - 相册分类、收藏夹筛选、文件名防抖搜索与批量操作栏（批量移动/批量删除/批量导出）。
+- **外部客户端与 CLI 集成**：
+  - 兼容 PicGo / Typora / ShareX 自定义 Web 图床（`POST /api/v1/gallery/upload`）；
+  - 提供无第三方依赖的 CLI 脚本：`node scripts/gallery-upload.mjs <image-path>`；
+  - Bucket CORS 配置：`npx wrangler r2 bucket cors set pocket-relay-gallery --file gallery-cors.json`。
+
 ## 架构
 
 ```text
@@ -231,6 +251,7 @@ X-Metaxy-Expires-In-Seconds: 86400
 ## 版本与许可
 
 - [更新日志](CHANGELOG.md)
+- [v3.0.1 发布公告](release/RELEASE_NOTES_v3.0.1.md)
 - [v3.0.0 发布公告](release/RELEASE_NOTES_v3.0.0.md)
 - [v2.1.0 发布公告](release/RELEASE_NOTES_v2.1.0.md)
 - [MIT License](LICENSE)

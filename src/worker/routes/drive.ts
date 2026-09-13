@@ -7,6 +7,7 @@ import { isRecord, parseJsonBody } from "../lib/body";
 import { checkRateLimit, getClientIp } from "../middleware/rate-limit";
 import { adminSessionMiddleware } from "../middleware/admin-session";
 import { adminCsrfMiddleware } from "../middleware/csrf";
+import { adminDomainMiddleware } from "../middleware/admin-domain";
 import {
   completeDriveUpload,
   copyNode,
@@ -29,6 +30,7 @@ import { createDevice, getDevices, revokeDevice } from "../services/device-servi
 
 export const driveRoutes = new Hono<WorkerContext>();
 
+driveRoutes.use("*", adminDomainMiddleware);
 driveRoutes.use("/drive/*", adminSessionMiddleware);
 driveRoutes.use("/drive/*", async (c, next) => {
   if (!driveIsEnabled(c.env)) throw new AppError(503, ERROR_CODES.DRIVE_DISABLED, "Drive is not enabled.");

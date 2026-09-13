@@ -73,11 +73,6 @@ export async function createDrivePage(): Promise<HTMLElement> {
     text.textContent = message;
     errorBox.appendChild(text);
 
-    if (status === 401) {
-      const loginBtn = button(t("drive.loginAdmin"), "primary-btn");
-      loginBtn.addEventListener("click", () => router.navigate("/admin"));
-      errorBox.appendChild(loginBtn);
-    }
     container.appendChild(errorBox);
   };
 
@@ -311,11 +306,6 @@ export async function createDrivePage(): Promise<HTMLElement> {
       errorBox.style.alignItems = "center";
       errorBox.style.gap = "12px";
       const message = document.createElement("p"); message.textContent = loadError; errorBox.appendChild(message);
-      if (loadErrorStatus === 401) {
-        const loginBtn = button(t("drive.loginAdmin"), "primary-btn");
-        loginBtn.addEventListener("click", () => router.navigate("/admin"));
-        errorBox.appendChild(loginBtn);
-      }
       container.appendChild(errorBox);
       return;
     }

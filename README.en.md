@@ -43,6 +43,26 @@ For a native Windows compatibility smoke test, run the following from an elevate
 .\scripts\windows-dav-smoke.ps1
 ```
 
+## Gallery 2.0 (Public Image Bed & Gallery)
+
+Gallery 2.0 introduces a dedicated image hosting, public sharing, and photo gallery system:
+
+- **Permission Isolation**: Fully decoupled from Drop uploads. Access is governed by `GALLERY_UPLOAD_MODE` (`private` / `token` / `public`, default `private`) and dedicated `GALLERY_UPLOAD_TOKEN` and `GALLERY_ADMIN_TOKEN`. Anonymous writes are strictly prohibited.
+- **R2 Direct Upload & Magic Byte Verification**: Direct PUT to R2 staging area via presigned URLs. On completion, the Worker inspects file magic bytes via Range request to eliminate spoofed images, and deduplicates identical files via SHA-256 hash.
+- **Client Processing Pipeline**:
+  - 40 MP memory protection to prevent browser tab crashes on oversized images;
+  - Smart WebP compression (keeps whichever is smaller, passes GIF/SVG/AVIF through untouched);
+  - Concurrent client-side generation of high-quality 640px WebP thumbnails.
+- **Frontend Management**:
+  - Multi-file drag-and-drop & clipboard multi-image pasting (Ctrl+V) with real-time XHR upload progress and concurrency control (1–5);
+  - Dual Grid & List views strictly loading 640px thumbnails (`loading="lazy"`) to eliminate latency on large galleries;
+  - Detail Drawer showing dimensions, stored size, compression savings, dominant color chip, album assignments, and multi-format quick copy;
+  - Albums, favorites filter, debounced filename search, and floating batch operations bar (batch move, delete, copy).
+- **Client & CLI Integration**:
+  - Native compatibility with PicGo / Typora / ShareX custom web uploaders (`POST /api/v1/gallery/upload`);
+  - Zero-dependency CLI upload script: `node scripts/gallery-upload.mjs <image-path>`;
+  - Bucket CORS configuration: `npx wrangler r2 bucket cors set pocket-relay-gallery --file gallery-cors.json`.
+
 ## Architecture
 
 ```text
@@ -223,6 +243,7 @@ The web composer now has a Paste button in the text field. The browser asks for 
 ## Version and license
 
 - [Changelog](CHANGELOG.md)
+- [v3.0.1 release notes](release/RELEASE_NOTES_v3.0.1.md)
 - [v3.0.0 release notes](release/RELEASE_NOTES_v3.0.0.md)
 - [v2.1.0 release notes](release/RELEASE_NOTES_v2.1.0.md)
 - [MIT License](LICENSE)
