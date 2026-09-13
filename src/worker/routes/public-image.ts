@@ -11,8 +11,9 @@ export const publicImageRoutes = new Hono<WorkerContext>();
 publicImageRoutes.on(["GET", "HEAD"], "/i/:param{.+}", async (c) => {
   const rawParam = c.req.param("param") || "";
   const isThumb = rawParam.includes(".thumb");
-  // Extract id before any dot or slash: e.g. "a1b2c3d4.webp" or "a1b2c3d4.thumb.webp" -> "a1b2c3d4"
-  const id = rawParam.split("/")[0].split(".")[0].trim();
+  // Extract id from the last path segment: e.g. "a1b2c3d4.webp", "2026/09/a1b2c3d4.webp" or "a1b2c3d4.thumb.webp" -> "a1b2c3d4"
+  const lastSegment = rawParam.split("/").filter(Boolean).pop() || "";
+  const id = lastSegment.split(".")[0].trim();
 
   if (!id) {
     throw new AppError(404, ERROR_CODES.GALLERY_IMAGE_NOT_FOUND, "Image not found.");

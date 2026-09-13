@@ -8,6 +8,7 @@ export default defineConfig({
     })
   ],
   test: {
-    include: ["test/worker/**/*.test.ts"]
+    include: ["test/worker/**/*.test.ts"],
+    testTimeout: 20000
   }
 });

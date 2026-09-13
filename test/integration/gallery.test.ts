@@ -162,6 +162,11 @@ describe("Gallery / Image Bed Integration", () => {
     });
     const res304 = await app.fetch(req304, env, { waitUntil: () => {} } as any);
     expect(res304.status).toBe(304);
+
+    // 3. GET with subpath / nested path
+    const reqNested = new Request(`https://drop.example.com/i/2026/09/${uploaded.id}.png`);
+    const resNested = await app.fetch(reqNested, env, { waitUntil: () => {} } as any);
+    expect(resNested.status).toBe(200);
   });
 
   it("supports listing and deleting gallery images", async () => {

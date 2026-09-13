@@ -10,12 +10,16 @@ export function generateCode(length: number = DEFAULT_LIMITS.DEFAULT_CODE_LENGTH
   );
 
   const charsetLength = CODE_CHARSET.length;
-  const randomBytes = new Uint8Array(targetLength);
-  crypto.getRandomValues(randomBytes);
-
+  const maxValidByte = 256 - (256 % charsetLength);
   let result = "";
-  for (let i = 0; i < targetLength; i++) {
-    result += CODE_CHARSET[randomBytes[i] % charsetLength];
+  while (result.length < targetLength) {
+    const buffer = new Uint8Array((targetLength - result.length) * 2);
+    crypto.getRandomValues(buffer);
+    for (let i = 0; i < buffer.length && result.length < targetLength; i++) {
+      if (buffer[i] < maxValidByte) {
+        result += CODE_CHARSET[buffer[i] % charsetLength];
+      }
+    }
   }
   return result;
 }
